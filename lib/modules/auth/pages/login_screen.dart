@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:medgurdian/logic/auth_bloc/auth_bloc.dart';
+import 'package:medgurdian/modules/auth/bloc/auth_bloc.dart';
 import '../../../core/route/app_routes_name.dart';
 
 class LoginScreen extends StatefulWidget {
