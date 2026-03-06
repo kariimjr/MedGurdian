@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:medgurdian/core/route/app_routes_name.dart';
+import 'package:medgurdian/core/widgets/DraggableAssistiveTouch.dart';
 import 'package:medgurdian/modules/cancer_detection/bloc/scan_bloc.dart';
 import 'package:medgurdian/modules/cancer_detection/pages/ScanScreen.dart';
-import 'package:medgurdian/modules/dashboard/pages/AppointmentsScreen.dart';
+import 'package:medgurdian/modules/chat/pages/MedicalChatScreen.dart';
 import 'package:medgurdian/modules/profile/pages/ProfileScreen.dart';
 
 class LayoutScreen extends StatefulWidget {
@@ -16,9 +18,19 @@ class _LayoutScreenState extends State<LayoutScreen> {
   int currentIndex = 0;
 
   final List<Widget> screens = [
-    const Center(child: Text("Home", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
-    Appointmentsscreen(),
-    const Center(child: Text("Records", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+    const Center(
+      child: Text(
+        "Home",
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      ),
+    ),
+    MedicalChatScreen(),
+    const Center(
+      child: Text(
+        "Records",
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      ),
+    ),
     ProfileScreen(),
   ];
 
@@ -27,14 +39,30 @@ class _LayoutScreenState extends State<LayoutScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text("MedGuardian",style: TextStyle(fontWeight: FontWeight.bold),),
+        title: Row(
+          spacing: 10,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image(
+              image: AssetImage("assets/logo/MedGLogo.png"),
+              width: 30,
+              height: 30,
+              fit: BoxFit.fill,
+            ),
+            const Text(
+              "MedGuardian",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
         centerTitle: true,
       ),
 
-      body: screens[currentIndex],
+      body: Stack(children: [screens[currentIndex],DraggableAssistiveTouch(onTap: (){
+        Navigator.pushNamed(context, RouteName.MedicalChat);
+      })]),
 
       floatingActionButton: FloatingActionButton(
-
         backgroundColor: Colors.blue,
         shape: const CircleBorder(),
         onPressed: () {
@@ -48,7 +76,11 @@ class _LayoutScreenState extends State<LayoutScreen> {
             ),
           );
         },
-        child: const Icon(Icons.document_scanner, color: Colors.white, size: 30),
+        child: const Icon(
+          Icons.document_scanner,
+          color: Colors.white,
+          size: 30,
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
@@ -64,14 +96,10 @@ class _LayoutScreenState extends State<LayoutScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTabItem(
-                    index: 0,
-                    icon: Icons.home,
-                    label: "Home",
-                  ),
+                  _buildTabItem(index: 0, icon: Icons.home, label: "Home"),
                   _buildTabItem(
                     index: 1,
-                    icon: Icons.calendar_month,
+                    icon: Icons.smart_toy,
                     label: "Schedule",
                   ),
                 ],
@@ -85,13 +113,9 @@ class _LayoutScreenState extends State<LayoutScreen> {
                     icon: Icons.medical_information,
                     label: "Records",
                   ),
-                  _buildTabItem(
-                    index: 3,
-                    icon: Icons.person,
-                    label: "Profile",
-                  ),
+                  _buildTabItem(index: 3, icon: Icons.person, label: "Profile"),
                 ],
-              )
+              ),
             ],
           ),
         ),
@@ -99,7 +123,11 @@ class _LayoutScreenState extends State<LayoutScreen> {
     );
   }
 
-  Widget _buildTabItem({required int index, required IconData icon, required String label}) {
+  Widget _buildTabItem({
+    required int index,
+    required IconData icon,
+    required String label,
+  }) {
     return MaterialButton(
       minWidth: 40,
       onPressed: () {
@@ -110,10 +138,7 @@ class _LayoutScreenState extends State<LayoutScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            color: currentIndex == index ? Colors.blue : Colors.grey,
-          ),
+          Icon(icon, color: currentIndex == index ? Colors.blue : Colors.grey),
           Text(
             label,
             style: TextStyle(
