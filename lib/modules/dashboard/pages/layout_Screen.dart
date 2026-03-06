@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:medgurdian/modules/cancer_detection/bloc/scan_bloc.dart';
+import 'package:medgurdian/modules/cancer_detection/pages/ScanScreen.dart';
 import 'package:medgurdian/modules/dashboard/pages/AppointmentsScreen.dart';
+import 'package:medgurdian/modules/profile/pages/ProfileScreen.dart';
 
 class LayoutScreen extends StatefulWidget {
   const LayoutScreen({super.key});
@@ -15,7 +19,7 @@ class _LayoutScreenState extends State<LayoutScreen> {
     const Center(child: Text("Home", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
     Appointmentsscreen(),
     const Center(child: Text("Records", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
-    const Center(child: Text("Profile", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+    ProfileScreen(),
   ];
 
   @override
@@ -34,7 +38,15 @@ class _LayoutScreenState extends State<LayoutScreen> {
         backgroundColor: Colors.blue,
         shape: const CircleBorder(),
         onPressed: () {
-          print("Scan Button Pressed");
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (routeContext) => BlocProvider<ScanBloc>(
+                create: (context) => ScanBloc(),
+                child: const ScanScreen(),
+              ),
+            ),
+          );
         },
         child: const Icon(Icons.document_scanner, color: Colors.white, size: 30),
       ),

@@ -38,6 +38,10 @@ dependencies:
   flutter_bloc:
   firebase_auth:
   cloud_firestore:
+  image_picker:
+  tflite_flutter:
+  image:
+  google_generative_ai:
 
 
 dev_dependencies:
@@ -66,6 +70,7 @@ flutter:
   assets:
      - assets/logo/
      - assets/images/
+     - assets/models/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
