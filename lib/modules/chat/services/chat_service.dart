@@ -7,7 +7,7 @@ class ChatService {
   ChatService() {
     _model = GenerativeModel(
       model: 'gemini-2.5-flash',
-      apiKey: 'AIzaSyDa_z-spYVYdiNHgQRoKMXYemDDE-abPk4', // 👈 Replace with your key
+      apiKey: '--',
       systemInstruction: Content.system(
           "You are MedGuardian AI, a professional medical assistant. "
               "Help users understand medical terms and MRI results. "

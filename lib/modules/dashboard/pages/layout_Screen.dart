@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:medgurdian/core/route/app_routes_name.dart';
 import 'package:medgurdian/core/widgets/DraggableAssistiveTouch.dart';
-import 'package:medgurdian/modules/Home/HomeScreen.dart';
+import 'package:medgurdian/modules/Home/pages/HomeScreen.dart';
 import 'package:medgurdian/modules/MedicineScreen/MedicineReminderScreen.dart';
 import 'package:medgurdian/modules/cancer_detection/bloc/scan_bloc.dart';
 import 'package:medgurdian/modules/cancer_detection/pages/ScanScreen.dart';

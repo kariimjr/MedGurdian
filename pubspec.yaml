@@ -44,6 +44,11 @@ dependencies:
   google_generative_ai:
   firebase_ml_model_downloader:
   lottie:
+  flutter_map:
+  latlong2:
+  url_launcher:
+  path_provider:
+  geolocator:
 
 
 dev_dependencies:

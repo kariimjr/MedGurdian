@@ -48,51 +48,51 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        foregroundColor: const Color(0xFF0277BD),
-
-        centerTitle: true,
-        title: Column(
-          children: [
-
-            const Text("AI Helper", style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFE1F5FE), // Light Sky Blue
-              Colors.white,
-              Color(0xFFE3F2FD), // Soft Blue Wash
-            ],
-            stops: [0.0, 0.4, 1.0],
-          ),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: _messages.isEmpty
-                  ? _buildWelcomeState()
-                  : _buildChatList(),
+    return SafeArea(
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        body: Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFE1F5FE), Colors.white, Color(0xFFE3F2FD)],
+              stops: [0.0, 0.4, 1.0],
             ),
-            _buildInputSection(),
-          ],
+          ),
+          child: NestedScrollView(
+            headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+              return <Widget>[
+                SliverAppBar(
+                  floating: true,
+                  snap: true,
+                  pinned: false, 
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  centerTitle: true,
+                  foregroundColor: const Color(0xFF0277BD),
+                  title: const Text("AI Helper", style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ];
+            },
+            body: Column(
+              children: [
+                Expanded(
+                  child: _messages.isEmpty
+                      ? _buildWelcomeState()
+                      : _buildChatList(),
+                ),
+                _buildInputSection(),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
-
   Widget _buildWelcomeState() {
 
 
