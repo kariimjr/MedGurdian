@@ -209,6 +209,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.0"
+  firebase_ml_model_downloader:
+    dependency: "direct main"
+    description:
+      name: firebase_ml_model_downloader
+      sha256: "14301cb70cf4395679b11e9fc07fcfde638b9e5faac2003d04d196684a608c95"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.0+6"
+  firebase_ml_model_downloader_platform_interface:
+    dependency: transitive
+    description:
+      name: firebase_ml_model_downloader_platform_interface
+      sha256: "1882a2cb76e7539f21cda59dacc822e04fdfa6187c79bde63e1068021589f861"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.5+17"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -376,6 +392,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.1.1"
+  lottie:
+    dependency: "direct main"
+    description:
+      name: lottie
+      sha256: c5fa04a80a620066c15cf19cc44773e19e9b38e989ff23ea32e5903ef1015950
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.3.1"
   matcher:
     dependency: transitive
     description:

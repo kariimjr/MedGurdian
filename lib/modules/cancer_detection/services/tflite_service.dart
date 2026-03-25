@@ -1,67 +1,83 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:firebase_ml_model_downloader/firebase_ml_model_downloader.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 
 class TFLiteService {
   Interpreter? _interpreter;
+  String _currentModelType = 'Brain';
 
-  // 1. Load the Model
-  Future<void> loadModel() async {
+  // 1. Load the Model Dynamically from Firebase
+  Future<void> loadModel(String modelType) async {
     try {
-      _interpreter = await Interpreter.fromAsset('assets/models/brain_cancer.tflite');
-      print('Model loaded successfully');
+      _currentModelType = modelType;
+
+      // Use a local variable to prevent race conditions during the download
+      String firebaseModelName = modelType == 'Brain' ? 'Brain_Model' : 'Breast_Model';
+
+      final customModel = await FirebaseModelDownloader.instance.getModel(
+        firebaseModelName,
+        FirebaseModelDownloadType.localModelUpdateInBackground,
+        FirebaseModelDownloadConditions(iosAllowsCellularAccess: true),
+      );
+
+      // ONLY close the old one if the NEW one is ready to be assigned
+      final newInterpreter = Interpreter.fromFile(customModel.file);
+
+      _interpreter?.close(); // Safe to close now
+      _interpreter = newInterpreter;
+
+      print('$modelType model loaded successfully');
     } catch (e) {
-      print('Failed to load model: $e');
+      print('Failed to load $modelType model from Firebase: $e');
+      // If download fails, don't kill the whole app; just keep the old model or null
     }
   }
-
   // 2. Run Inference
   Future<Map<String, dynamic>?> runPrediction(String imagePath) async {
     if (_interpreter == null) return null;
 
-    // Read the image from the file
     File file = File(imagePath);
-    img.Image? originalImage = img.decodeImage(file.readAsBytesSync());
+    Uint8List bytes = await file.readAsBytes();
+    img.Image? originalImage = img.decodeImage(bytes);
     if (originalImage == null) return null;
 
-    // Resize image to fit your CNN input shape (Usually 224x224)
+    // Standardize input size for your CNN models
     img.Image resizedImage = img.copyResize(originalImage, width: 224, height: 224);
-
-    // Convert the image to a multi-dimensional array of floats
     var inputBuffer = _imageToByteListFloat32(resizedImage, 224, 127.5, 127.5);
 
-    // Prepare the output buffer.
-    // Assuming 2 classes (Index 0: Normal, Index 1: Tumor)
+    // Output shape: [1, 2] for binary classification (Tumor/Normal or Malignant/Benign)
     var outputBuffer = List.filled(1 * 2, 0.0).reshape([1, 2]);
 
-    // RUN THE AI
     _interpreter!.run(inputBuffer, outputBuffer);
 
-    // Extract results
-    double normalProb = outputBuffer[0][0];
-    double tumorProb = outputBuffer[0][1];
+    double class0Prob = outputBuffer[0][0];
+    double class1Prob = outputBuffer[0][1];
 
-    if (tumorProb > normalProb) {
-      return {'label': 'Tumor Detected', 'confidence': tumorProb};
+    // Dynamic Labeling based on active model
+    if (_currentModelType == 'Brain') {
+      return class1Prob > class0Prob
+          ? {'label': 'Tumor Detected', 'confidence': class1Prob}
+          : {'label': 'Normal', 'confidence': class0Prob};
     } else {
-      return {'label': 'Normal', 'confidence': normalProb};
+      return class1Prob > class0Prob
+          ? {'label': 'Malignant', 'confidence': class1Prob}
+          : {'label': 'Benign', 'confidence': class0Prob};
     }
   }
 
-  // 3. The Math: Converting pixels to neural network inputs
   ByteBuffer _imageToByteListFloat32(img.Image image, int inputSize, double mean, double std) {
     var convertedBytes = Float32List(1 * inputSize * inputSize * 3);
-    var buffer = Float32List.view(convertedBytes.buffer);
     int pixelIndex = 0;
 
     for (int i = 0; i < inputSize; i++) {
       for (int j = 0; j < inputSize; j++) {
         var pixel = image.getPixel(j, i);
-        // Normalize the R, G, B values
-        buffer[pixelIndex++] = (pixel.r - mean) / std;
-        buffer[pixelIndex++] = (pixel.g - mean) / std;
-        buffer[pixelIndex++] = (pixel.b - mean) / std;
+        // Normalize pixels to [-1, 1] range as required by many CNNs
+        convertedBytes[pixelIndex++] = (pixel.r - mean) / std;
+        convertedBytes[pixelIndex++] = (pixel.g - mean) / std;
+        convertedBytes[pixelIndex++] = (pixel.b - mean) / std;
       }
     }
     return convertedBytes.buffer;

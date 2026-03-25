@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:medgurdian/modules/chat/services/chat_service.dart';
 
 class MedicalChatScreen extends StatefulWidget {
@@ -9,15 +11,24 @@ class MedicalChatScreen extends StatefulWidget {
 }
 
 class _MedicalChatScreenState extends State<MedicalChatScreen> {
+
   final ChatService _chatService = ChatService();
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
 
-  void _sendPrompt() async {
-    if (_controller.text.isEmpty) return;
+  // Suggestions tailored to your MedGuardian project focus
+  final List<String> _suggestions = [
+    "Explain Brain MRI results",
+    "Symptoms of Breast Cancer",
+    "How to prepare for a scan?",
+    "Next steps after diagnosis"
+  ];
 
-    String userMessage = _controller.text;
+  void _sendPrompt({String? text}) async {
+    String userMessage = text ?? _controller.text;
+    if (userMessage.isEmpty) return;
+
     setState(() {
       _messages.add({"role": "user", "text": userMessage});
       _isLoading = true;
@@ -27,7 +38,11 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
     final response = await _chatService.sendMessage(userMessage);
 
     setState(() {
-      _messages.add({"role": "ai", "text": response ?? "No response"});
+      _messages.add({
+        "role": "ai",
+        "text": response ??
+            "I'm having trouble connecting to the medical server."
+      });
       _isLoading = false;
     });
   }
@@ -35,70 +50,92 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title:  Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              spacing: 10,
-              children: [
-                Icon(Icons.person,),
-                Text(
-                  "Tawfik AI",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+        foregroundColor: const Color(0xFF0277BD),
 
-              ],
-            ),
-            Icon(Icons.online_prediction_rounded,color: Colors.green,),
+        centerTitle: true,
+        title: Column(
+          children: [
+
+            const Text("AI Helper", style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+
+        backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Column(
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFE1F5FE), // Light Sky Blue
+              Colors.white,
+              Color(0xFFE3F2FD), // Soft Blue Wash
+            ],
+            stops: [0.0, 0.4, 1.0],
+          ),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: _messages.isEmpty
+                  ? _buildWelcomeState()
+                  : _buildChatList(),
+            ),
+            _buildInputSection(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeState() {
+
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Disclaimer Banner
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(8),
-            color: Colors.orange.shade50,
-            child: const Text(
-              "⚠️ AI advice is not a substitute for professional medical diagnosis.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
+          SizedBox(
+            height: 220,
+            child: Lottie.asset(
+              'assets/json/circles.json',
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => const CircleAvatar(
+                radius: 60,
+                backgroundColor: Colors.blueAccent,
+                child: Icon(Icons.auto_awesome, color: Colors.white, size: 40),
               ),
             ),
           ),
-
-          // Chat Messages
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                bool isUser = msg["role"] == "user";
-                return _buildChatBubble(msg["text"]!, isUser);
-              },
+          const SizedBox(height: 24),
+          Text(
+            "Hey, What are you looking for today?", // Dynamic greeting
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0277BD),
+              letterSpacing: -0.5,
             ),
           ),
-
-          if (_isLoading)
-            const LinearProgressIndicator(
-              backgroundColor: Colors.white,
-              color: Colors.blue,
-            ),
-
-          // Input Area
-          _buildInputArea(),
         ],
       ),
+    );
+  }
+  Widget _buildChatList() {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
+      itemCount: _messages.length,
+      itemBuilder: (context, index) {
+        final msg = _messages[index];
+        bool isUser = msg["role"] == "user";
+        return _buildChatBubble(msg["text"]!, isUser);
+      },
     );
   }
 
@@ -106,54 +143,134 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.all(12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isUser ? Colors.blue : Colors.grey.shade200,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isUser ? 16 : 0),
-            bottomRight: Radius.circular(isUser ? 0 : 16),
-          ),
+          color: isUser ? const Color(0xFF0277BD) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4)
+            )
+          ],
         ),
         child: Text(
           text,
-          style: TextStyle(color: isUser ? Colors.white : Colors.black87),
+          style: TextStyle(
+              color: isUser ? Colors.white : Colors.black87,
+              fontSize: 15,
+              height: 1.4
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildInputArea() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
+  Widget _buildInputSection() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 25),
+      child: Column(
         children: [
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              decoration: InputDecoration(
-                hintText: "Ask about your health...",
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          // Horizontal Scrollable Suggestions with Constant Size
+          if (_messages.isEmpty)
+            SizedBox(
+              height: 70, // Increased height to accommodate multiple lines
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _suggestions.length,
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () => _sendPrompt(text: _suggestions[index]),
+                    child: Container(
+                      width: 180,
+                      // Constant width for all capsules
+                      margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: Colors.blue.withOpacity(0.1)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          )
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          _suggestions[index],
+                          textAlign: TextAlign.center,
+                          maxLines: 2, // Allows text to wrap into lines
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF0277BD),
+                            fontWeight: FontWeight.w500,
+                            height: 1.2, // Adjusts line spacing for clarity
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          CircleAvatar(
-            backgroundColor: Colors.blue,
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white),
-              onPressed: _sendPrompt,
+          const SizedBox(height: 15),
+
+          // Modern Capsule Input Bar
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(40),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.blue.withOpacity(0.1),
+                    blurRadius: 25,
+                    offset: const Offset(0, 8)
+                )
+              ],
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    onSubmitted: (val) => _sendPrompt(),
+                    decoration: const InputDecoration(
+                      hintText: "Start searching...",
+                      border: InputBorder.none,
+                      hintStyle: TextStyle(
+                          color: Colors.blueGrey, fontSize: 15),
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _sendPrompt,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white)
+                    )
+                        : const Icon(
+                        Icons.arrow_upward, color: Colors.white, size: 20),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

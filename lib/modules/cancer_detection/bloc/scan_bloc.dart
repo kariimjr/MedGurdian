@@ -13,32 +13,35 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  String _activeModel = 'Brain';
+
   ScanBloc() : super(ScanInitial()) {
-    _tfliteService.loadModel();
 
-    // 1. Handle Batch Delete
-    on<ClearHistoryEvent>((event, emit) async {
+    on<InitializeScanEvent>((event, emit) async {
+      emit(ScanLoading());
       try {
-        final String? userId = _auth.currentUser?.uid;
-        if (userId != null) {
-          // Note: In production, batch deletes are better for performance
-          var snapshots = await _firestore
-              .collection('scan_history')
-              .where('userId', isEqualTo: userId)
-              .get();
-
-          final batch = _firestore.batch();
-          for (var doc in snapshots.docs) {
-            batch.delete(doc.reference);
-          }
-          await batch.commit();
-        }
+        await _tfliteService.loadModel(_activeModel);
+        emit(ScanInitial());
       } catch (e) {
-        emit(ScanError("Failed to clear history: $e"));
+        emit(ScanError("Initial load failed: $e"));
       }
     });
 
-    // 2. Handle Image Picking and Prediction
+    on<SwitchModelEvent>((event, emit) async {
+      try {
+        // Use event.modelType safely
+        _activeModel = event.modelType;
+        emit(ScanLoading());
+
+        // This now fetches from Firebase instead of local assets
+        await _tfliteService.loadModel(_activeModel);
+
+        emit(ScanInitial());
+      } catch (e) {
+        emit(ScanError("Failed to switch model: $e"));
+      }
+    });
+
     on<PickImageEvent>((event, emit) async {
       try {
         final XFile? pickedFile = await _picker.pickImage(source: event.source);
@@ -54,31 +57,49 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
             String label = result['label'];
             double confidence = result['confidence'];
 
-            await _saveScanToHistory(label, confidence);
+            await _saveScanToHistory(label, confidence, _activeModel);
 
-            emit(ScanSuccess(imageFile, label, confidence));
+            emit(ScanSuccess(imageFile, label, confidence, _activeModel));
           } else {
             emit(ScanError("Could not analyze the image."));
           }
         } else {
-          // Simply return to initial state if user cancels
           emit(ScanInitial());
         }
       } catch (e) {
         emit(ScanError("Failed to process image: $e"));
       }
     });
+
+    on<ClearHistoryEvent>((event, emit) async {
+      try {
+        final String? userId = _auth.currentUser?.uid;
+        if (userId != null) {
+          var snapshots = await _firestore
+              .collection('scan_history')
+              .where('userId', isEqualTo: userId)
+              .get();
+
+          final batch = _firestore.batch();
+          for (var doc in snapshots.docs) {
+            batch.delete(doc.reference);
+          }
+          await batch.commit();
+        }
+      } catch (e) {
+        emit(ScanError("Failed to clear history: $e"));
+      }
+    });
   }
 
-  // 3. Data Storage Logic
-  Future<void> _saveScanToHistory(String label, double confidence) async {
+  Future<void> _saveScanToHistory(String label, double confidence, String category) async {
     final String? userId = _auth.currentUser?.uid;
-
     if (userId != null) {
       await _firestore.collection('scan_history').add({
         'userId': userId,
         'label': label,
         'confidence': confidence,
+        'category': category,
         'date': FieldValue.serverTimestamp(),
       });
     }

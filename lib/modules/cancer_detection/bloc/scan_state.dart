@@ -15,8 +15,10 @@ class ScanSuccess extends ScanState {
   final File image;
   final String resultLabel;
   final double confidence;
+  // 🔥 Add this to track which model gave the result
+  final String category;
 
-  ScanSuccess(this.image, this.resultLabel, this.confidence);
+  ScanSuccess(this.image, this.resultLabel, this.confidence, this.category);
 }
 
 class ScanError extends ScanState {

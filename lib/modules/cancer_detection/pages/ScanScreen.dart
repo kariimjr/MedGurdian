@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+
+// Ensure these paths match your actual project structure
 import '../bloc/scan_bloc.dart';
 import '../bloc/scan_event.dart';
 import '../bloc/scan_state.dart';
@@ -15,16 +18,28 @@ class ScanScreen extends StatefulWidget {
 }
 
 class _ScanScreenState extends State<ScanScreen> {
+  String _activeModel = 'Brain';
+
+  @override
+  void initState() {
+    super.initState();
+    // 🔥 NEW: Trigger the initial model download from Firebase when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ScanBloc>().add(InitializeScanEvent());
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Brain MRI Analysis", style: TextStyle(fontWeight: FontWeight.bold)),
+
+        title: Text("$_activeModel Analysis", style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        foregroundColor: const Color(0xFF0277BD),
       ),
       body: BlocConsumer<ScanBloc, ScanState>(
         listener: (context, state) {
@@ -42,7 +57,24 @@ class _ScanScreenState extends State<ScanScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 1. Image Display Area
+                    // Model Selection Toggle
+                    CupertinoSlidingSegmentedControl<String>(
+                      groupValue: _activeModel,
+                      children: const {
+                        'Brain': Text('Brain Cancer'),
+                        'Breast': Text('Breast Cancer'),
+                      },
+                      onValueChanged: (value) {
+                        if (value != null) {
+                          setState(() => _activeModel = value);
+                          // Notify BLoC to switch the cloud model
+                          context.read<ScanBloc>().add(SwitchModelEvent(value));
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Image Display Area
                     Container(
                       height: 300,
                       decoration: BoxDecoration(
@@ -54,25 +86,37 @@ class _ScanScreenState extends State<ScanScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // 2. Results & Recommendation Area
+                    // Results and Recommendation Area
                     _buildResultsArea(state),
                     const SizedBox(height: 24),
 
-                    // 3. Action Buttons
+                    // Action Buttons (Camera/Gallery)
                     _buildActionButtons(context),
                     const SizedBox(height: 32),
 
-
+                    // Filtered History List
                     _buildHistoryList(),
                   ],
                 ),
               ),
 
-              // Loading Overlay
+              // 🔥 UPDATED: Full-screen loader for Cloud Syncing
               if (state is ScanLoading)
                 Container(
-                  color: Colors.black12,
-                  child: const Center(child: CircularProgressIndicator()),
+                  color: Colors.black45,
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(color: Colors.white),
+                        SizedBox(height: 16),
+                        Text(
+                          "Syncing AI with Cloud...",
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
             ],
           );
@@ -81,61 +125,35 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: const Icon(Icons.photo_library),
-            label: const Text("Gallery"),
-            onPressed: () => context.read<ScanBloc>().add(PickImageEvent(ImageSource.gallery)),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: const Icon(Icons.camera_alt),
-            label: const Text("Camera"),
-            onPressed: () => context.read<ScanBloc>().add(PickImageEvent(ImageSource.camera)),
-          ),
-        ),
-      ],
-    );
-  }
+  // --- HELPER WIDGETS ---
 
   Widget _buildImageArea(ScanState state) {
-    if (state is ScanImagePicked || state is ScanSuccess) {
-      final image = (state is ScanImagePicked) ? state.image : (state as ScanSuccess).image;
+    if (state is ScanImagePicked) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(18),
-        child: Image.file(image, fit: BoxFit.cover),
+        child: Image.file(state.image, fit: BoxFit.cover),
+      );
+    } else if (state is ScanSuccess) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Image.file(state.image, fit: BoxFit.cover),
       );
     }
-    return const Column(
+    return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.biotech, size: 80, color: Colors.blue),
+        const Icon(Icons.biotech, size: 80, color: Colors.blue),
         const SizedBox(height: 16),
-        Text("Upload MRI Scan", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        Text("Analyze brain scans instantly", style: TextStyle(color: Colors.grey)),
+        Text("Upload $_activeModel Scan", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text("Analyze scans instantly", style: TextStyle(color: Colors.grey)),
       ],
     );
   }
 
   Widget _buildResultsArea(ScanState state) {
     if (state is ScanSuccess) {
-      bool isTumor = state.resultLabel.contains("Tumor");
-      Color resultColor = isTumor ? Colors.red : Colors.green;
+      bool isPositive = state.resultLabel.contains("Tumor") || state.resultLabel.contains("Malignant");
+      Color resultColor = isPositive ? Colors.red : Colors.green;
 
       return Column(
         children: [
@@ -156,10 +174,12 @@ class _ScanScreenState extends State<ScanScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          if (isTumor)
+          if (isPositive)
             _buildRecommendationCard(
               "Recommendation",
-              "Detection suggests abnormalities. Please consult a neurologist for review.",
+              _activeModel == 'Brain'
+                  ? "Consult a neurologist for a professional review."
+                  : "Consult an oncologist for further tests.",
               Icons.medical_services,
               Colors.orange,
             ),
@@ -183,7 +203,28 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  // --- LOG HISTORY FEATURE WITH DELETE ---
+  Widget _buildActionButtons(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.photo_library),
+            label: const Text("Gallery"),
+            onPressed: () => context.read<ScanBloc>().add(PickImageEvent(ImageSource.gallery)),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+            icon: const Icon(Icons.camera_alt),
+            label: const Text("Camera"),
+            onPressed: () => context.read<ScanBloc>().add(PickImageEvent(ImageSource.camera)),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildHistoryList() {
     final String? userId = FirebaseAuth.instance.currentUser?.uid;
@@ -192,11 +233,24 @@ class _ScanScreenState extends State<ScanScreen> {
       stream: FirebaseFirestore.instance
           .collection('scan_history')
           .where('userId', isEqualTo: userId)
+          .where('category', isEqualTo: _activeModel)
           .orderBy('date', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(child: Text("Error loading history: ${snapshot.error}", style: const TextStyle(fontSize: 12)));
+          if (snapshot.error.toString().contains("FAILED_PRECONDITION")) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  "Database is preparing your history index. Please wait a few minutes...",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+            );
+          }
+          return Center(child: Text("Error: ${snapshot.error}"));
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -205,118 +259,29 @@ class _ScanScreenState extends State<ScanScreen> {
 
         final docs = snapshot.data?.docs ?? [];
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 🔥 Dynamic Header with Conditional "Clear All" Button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Recent History",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                // Only show the button if the list is NOT empty
-                if (docs.isNotEmpty)
-                  TextButton.icon(
-                    onPressed: () => _showDeleteConfirmation(context),
-                    icon: const Icon(Icons.delete_sweep, color: Colors.red, size: 20),
-                    label: const Text("Clear All", style: TextStyle(color: Colors.red)),
-                  ),
-              ],
+        if (docs.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Text("No $_activeModel scans found.", style: const TextStyle(color: Colors.grey)),
             ),
-            const SizedBox(height: 16),
+          );
+        }
 
-            if (docs.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(20.0),
-                  child: Text("No scans found.", style: TextStyle(color: Colors.grey)),
-                ),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: docs.length,
-                itemBuilder: (context, index) {
-                  final doc = docs[index];
-                  final data = doc.data() as Map<String, dynamic>;
-                  final bool isTumor = data['label'].toString().contains("Tumor");
-                  final Timestamp? timestamp = data['date'] as Timestamp?;
-                  final DateTime date = timestamp?.toDate() ?? DateTime.now();
-
-                  return Dismissible(
-                    key: Key(doc.id),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(15)),
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    onDismissed: (direction) {
-                      FirebaseFirestore.instance.collection('scan_history').doc(doc.id).delete();
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.grey.shade100),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: isTumor ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
-                            child: Icon(isTumor ? Icons.warning_amber_rounded : Icons.check_circle_outline,
-                                color: isTumor ? Colors.red : Colors.green),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(data['label'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                Text("${date.day}/${date.month}/${date.year} • ${date.hour}:${date.minute.toString().padLeft(2, '0')}",
-                                    style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                          Text("${((data['confidence'] ?? 0) * 100).toStringAsFixed(1)}%",
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-          ],
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            return ListTile(
+              leading: const Icon(Icons.history, color: Colors.blue),
+              title: Text(data['label'] ?? 'Unknown Result'),
+              subtitle: Text("Confidence: ${(data['confidence'] * 100).toStringAsFixed(1)}%"),
+            );
+          },
         );
       },
     );
   }
-
-  void _showDeleteConfirmation(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text("Clear History"),
-        content: const Text("Are you sure you want to delete all scan logs? This cannot be undone."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              context.read<ScanBloc>().add(ClearHistoryEvent());
-              Navigator.pop(dialogContext);
-            },
-            child: const Text("Delete All", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }}
+}

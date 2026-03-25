@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:medgurdian/core/route/app_routes_name.dart';
 import 'package:medgurdian/core/widgets/DraggableAssistiveTouch.dart';
+import 'package:medgurdian/modules/Home/HomeScreen.dart';
+import 'package:medgurdian/modules/MedicineScreen/MedicineReminderScreen.dart';
 import 'package:medgurdian/modules/cancer_detection/bloc/scan_bloc.dart';
 import 'package:medgurdian/modules/cancer_detection/pages/ScanScreen.dart';
 import 'package:medgurdian/modules/chat/pages/MedicalChatScreen.dart';
@@ -18,45 +20,15 @@ class _LayoutScreenState extends State<LayoutScreen> {
   int currentIndex = 0;
 
   final List<Widget> screens = [
-    const Center(
-      child: Text(
-        "Home",
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      ),
-    ),
+    HealthHomeScreen(),
     MedicalChatScreen(),
-    const Center(
-      child: Text(
-        "Records",
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      ),
-    ),
+    MedicineReminderScreen(),
     ProfileScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Row(
-          spacing: 10,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image(
-              image: AssetImage("assets/logo/MedGLogo.png"),
-              width: 30,
-              height: 30,
-              fit: BoxFit.fill,
-            ),
-            const Text(
-              "MedGuardian",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        centerTitle: true,
-      ),
 
       body: Stack(children: [screens[currentIndex],DraggableAssistiveTouch(onTap: (){
         Navigator.pushNamed(context, RouteName.MedicalChat);
@@ -99,8 +71,8 @@ class _LayoutScreenState extends State<LayoutScreen> {
                   _buildTabItem(index: 0, icon: Icons.home, label: "Home"),
                   _buildTabItem(
                     index: 1,
-                    icon: Icons.smart_toy,
-                    label: "Schedule",
+                    icon: Icons.auto_awesome,
+                    label: "AI Helper",
                   ),
                 ],
               ),
@@ -110,8 +82,8 @@ class _LayoutScreenState extends State<LayoutScreen> {
                 children: [
                   _buildTabItem(
                     index: 2,
-                    icon: Icons.medical_information,
-                    label: "Records",
+                    icon: Icons.medication_rounded,
+                    label: "Medicines",
                   ),
                   _buildTabItem(index: 3, icon: Icons.person, label: "Profile"),
                 ],

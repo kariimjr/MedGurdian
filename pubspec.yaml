@@ -42,6 +42,8 @@ dependencies:
   tflite_flutter:
   image:
   google_generative_ai:
+  firebase_ml_model_downloader:
+  lottie:
 
 
 dev_dependencies:
@@ -70,7 +72,7 @@ flutter:
   assets:
      - assets/logo/
      - assets/images/
-     - assets/models/
+     - assets/json/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
