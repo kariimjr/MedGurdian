@@ -49,6 +49,7 @@ dependencies:
   url_launcher:
   path_provider:
   geolocator:
+  shared_preferences:
 
 
 dev_dependencies:

@@ -8,7 +8,6 @@ class TFLiteService {
   Interpreter? _interpreter;
   String _currentModelType = 'Brain';
 
-  // Labels matching the index order of your model
   final List<String> _brainLabels = ['Glioma', 'Meningioma', 'No Tumor', 'Pituitary'];
   final List<String> _breastLabels = ['Benign', 'Malignant'];
 
@@ -41,42 +40,51 @@ class TFLiteService {
     img.Image? originalImage = img.decodeImage(bytes);
     if (originalImage == null) return null;
 
-    // 1. Resize to match Colab input (224x224)
+    // 1. Resize (Standard 224x224)
     img.Image resizedImage = img.copyResize(originalImage, width: 224, height: 224);
 
-    // 2. Preprocess: Use 0.0 mean and 255.0 std to match "input / 255.0" from Colab
-    var inputBuffer = _imageToByteListFloat32(resizedImage, 224, 0.0, 255.0);
+    // 2. Preprocess (Separate logic inside this function)
+    var inputBuffer = _imageToByteListFloat32(resizedImage, 224);
 
-    // 3. Prepare output buffer (4 classes for Brain, 2 for Breast)
-    int numClasses = _currentModelType == 'Brain' ? 4 : 2;
-    var outputBuffer = List<double>.filled(1 * numClasses, 0.0).reshape([1, numClasses]);
+    // 3. Prepare Output Buffer & 4. Run Inference
+    // We separate these because the number of output classes is different
+    if (_currentModelType == 'Breast') {
+      // VGG16 Binary Classification usually has 1 output unit
+      var outputBuffer = List<double>.filled(1, 0.0).reshape([1, 1]);
+      _interpreter!.run(inputBuffer, outputBuffer);
 
-    // 4. Run Inference
-    _interpreter!.run(inputBuffer, outputBuffer);
+      double score = outputBuffer[0][0];
+      bool isMalignant = score > 0.5;
 
-    // 5. Process results
-    List<double> probabilities = List<double>.from(outputBuffer[0]);
+      return {
+        'label': isMalignant ? 'Malignant' : 'Benign',
+        'confidence': isMalignant ? score : (1.0 - score),
+        'all_scores': [score]
+      };
+    } else {
+      // Brain Multi-class Classification (4 classes)
+      var outputBuffer = List<double>.filled(1 * 4, 0.0).reshape([1, 4]);
+      _interpreter!.run(inputBuffer, outputBuffer);
 
-    // Find the index with the highest probability (Argmax)
-    int maxIndex = 0;
-    double maxProb = -1.0;
-    for (int i = 0; i < probabilities.length; i++) {
-      if (probabilities[i] > maxProb) {
-        maxProb = probabilities[i];
-        maxIndex = i;
+      List<double> probabilities = List<double>.from(outputBuffer[0]);
+      int maxIndex = 0;
+      double maxProb = -1.0;
+      for (int i = 0; i < probabilities.length; i++) {
+        if (probabilities[i] > maxProb) {
+          maxProb = probabilities[i];
+          maxIndex = i;
+        }
       }
+
+      return {
+        'label': _brainLabels[maxIndex],
+        'confidence': maxProb,
+        'all_scores': probabilities
+      };
     }
-
-    List<String> labels = _currentModelType == 'Brain' ? _brainLabels : _breastLabels;
-
-    return {
-      'label': labels[maxIndex],
-      'confidence': maxProb,
-      'all_scores': probabilities // Good for debugging
-    };
   }
 
-  ByteBuffer _imageToByteListFloat32(img.Image image, int size, double d, double k) {
+  ByteBuffer _imageToByteListFloat32(img.Image image, int size) {
     var convertedBytes = Float32List(1 * size * size * 3);
     int bufferIndex = 0;
 
@@ -84,25 +92,28 @@ class TFLiteService {
       for (int x = 0; x < size; x++) {
         var pixel = image.getPixel(x, y);
 
-        // TRY THIS:
-        // If the model was trained with 'preprocess_input',
-        // it usually wants the pixels scaled to [-1, 1]
-        // OR kept at [0, 255].
+        double r = pixel.r.toDouble();
+        double g = pixel.g.toDouble();
+        double b = pixel.b.toDouble();
 
-        // Standard EfficientNetV2 (Most likely):
-        convertedBytes[bufferIndex++] = pixel.r.toDouble();
-        convertedBytes[bufferIndex++] = pixel.g.toDouble();
-        convertedBytes[bufferIndex++] = pixel.b.toDouble();
-
-        /* IF THE ABOVE STILL SAYS "NO TUMOR", replace the 3 lines above with:
-      convertedBytes[bufferIndex++] = (pixel.r / 127.5) - 1.0;
-      convertedBytes[bufferIndex++] = (pixel.g / 127.5) - 1.0;
-      convertedBytes[bufferIndex++] = (pixel.b / 127.5) - 1.0;
-      */
+        if (_currentModelType == 'Breast') {
+          // --- VGG16 Preprocessing ---
+          // BGR Order and Mean Subtraction
+          convertedBytes[bufferIndex++] = b - 103.939;
+          convertedBytes[bufferIndex++] = g - 116.779;
+          convertedBytes[bufferIndex++] = r - 123.68;
+        } else {
+          // --- Brain Model (EfficientNet) Preprocessing ---
+          // Reverted to your original logic: No division, pure RGB
+          convertedBytes[bufferIndex++] = r;
+          convertedBytes[bufferIndex++] = g;
+          convertedBytes[bufferIndex++] = b;
+        }
       }
     }
     return convertedBytes.buffer;
   }
+
   void dispose() {
     _interpreter?.close();
   }
