@@ -23,10 +23,32 @@ class _ScanScreenState extends State<ScanScreen> {
   @override
   void initState() {
     super.initState();
-    // 🔥 NEW: Trigger the initial model download from Firebase when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ScanBloc>().add(InitializeScanEvent());
     });
+  }
+
+  // Helper to determine if a result is "Healthy"
+  bool _isResultHealthy(String label) {
+    return label == 'No Tumor' || label == 'Benign';
+  }
+
+  // Firestore Delete Function
+  Future<void> _deleteScan(String docId) async {
+    try {
+      await FirebaseFirestore.instance.collection('scan_history').doc(docId).delete();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Scan record removed"),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error deleting scan: $e");
+    }
   }
 
   @override
@@ -34,7 +56,6 @@ class _ScanScreenState extends State<ScanScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-
         title: Text("$_activeModel Analysis", style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
@@ -57,7 +78,6 @@ class _ScanScreenState extends State<ScanScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Model Selection Toggle
                     CupertinoSlidingSegmentedControl<String>(
                       groupValue: _activeModel,
                       children: const {
@@ -67,40 +87,36 @@ class _ScanScreenState extends State<ScanScreen> {
                       onValueChanged: (value) {
                         if (value != null) {
                           setState(() => _activeModel = value);
-                          // Notify BLoC to switch the cloud model
                           context.read<ScanBloc>().add(SwitchModelEvent(value));
                         }
                       },
                     ),
                     const SizedBox(height: 20),
-
-                    // Image Display Area
                     Container(
                       height: 300,
                       decoration: BoxDecoration(
                         color: Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.blue.shade100, width: 2),
+                        border: Border.all(
+                          color: state is ScanSuccess
+                              ? (_isResultHealthy(state.resultLabel) ? Colors.green : Colors.red)
+                              : Colors.blue.shade100,
+                          width: 2,
+                        ),
                       ),
                       child: _buildImageArea(state),
                     ),
                     const SizedBox(height: 24),
-
-                    // Results and Recommendation Area
                     _buildResultsArea(state),
                     const SizedBox(height: 24),
-
-                    // Action Buttons (Camera/Gallery)
                     _buildActionButtons(context),
                     const SizedBox(height: 32),
-
-                    // Filtered History List
+                    const Text("Recent History", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Divider(),
                     _buildHistoryList(),
                   ],
                 ),
               ),
-
-              // 🔥 UPDATED: Full-screen loader for Cloud Syncing
               if (state is ScanLoading)
                 Container(
                   color: Colors.black45,
@@ -110,10 +126,7 @@ class _ScanScreenState extends State<ScanScreen> {
                       children: [
                         CircularProgressIndicator(color: Colors.white),
                         SizedBox(height: 16),
-                        Text(
-                          "Syncing AI with Cloud...",
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
+                        Text("Syncing AI...", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -125,82 +138,50 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  // --- HELPER WIDGETS ---
-
   Widget _buildImageArea(ScanState state) {
-    if (state is ScanImagePicked) {
+    if (state is ScanImagePicked || state is ScanSuccess) {
+      dynamic currentState = state;
       return ClipRRect(
         borderRadius: BorderRadius.circular(18),
-        child: Image.file(state.image, fit: BoxFit.cover),
-      );
-    } else if (state is ScanSuccess) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Image.file(state.image, fit: BoxFit.cover),
+        child: Image.file(currentState.image, fit: BoxFit.cover),
       );
     }
-    return Column(
+    return const Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.biotech, size: 80, color: Colors.blue),
-        const SizedBox(height: 16),
-        Text("Upload $_activeModel Scan", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const Text("Analyze scans instantly", style: TextStyle(color: Colors.grey)),
+        Icon(Icons.biotech, size: 80, color: Colors.blue),
+        Text("Upload Scan", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       ],
     );
   }
 
   Widget _buildResultsArea(ScanState state) {
     if (state is ScanSuccess) {
-      bool isPositive = state.resultLabel.contains("Tumor") || state.resultLabel.contains("Malignant");
-      Color resultColor = isPositive ? Colors.red : Colors.green;
-
-      return Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: resultColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: resultColor.withOpacity(0.3)),
-            ),
-            child: Column(
+      bool isHealthy = _isResultHealthy(state.resultLabel);
+      Color resultColor = isHealthy ? Colors.green : Colors.red;
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: resultColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: resultColor.withOpacity(0.5), width: 2),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(state.resultLabel, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: resultColor)),
-                const SizedBox(height: 8),
-                Text("AI Confidence: ${(state.confidence * 100).toStringAsFixed(1)}%",
-                    style: const TextStyle(fontSize: 16, color: Colors.black87)),
+                Icon(isHealthy ? Icons.check_circle : Icons.warning_rounded, color: resultColor),
+                const SizedBox(width: 10),
+                Text(state.resultLabel, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: resultColor)),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-          if (isPositive)
-            _buildRecommendationCard(
-              "Recommendation",
-              _activeModel == 'Brain'
-                  ? "Consult a neurologist for a professional review."
-                  : "Consult an oncologist for further tests.",
-              Icons.medical_services,
-              Colors.orange,
-            ),
-        ],
+            Text("AI Confidence: ${(state.confidence * 100).toStringAsFixed(1)}%"),
+          ],
+        ),
       );
     }
     return const SizedBox.shrink();
-  }
-
-  Widget _buildRecommendationCard(String title, String desc, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Expanded(child: Text(desc, style: const TextStyle(fontSize: 13, color: Colors.black54))),
-        ],
-      ),
-    );
   }
 
   Widget _buildActionButtons(BuildContext context) {
@@ -237,51 +218,75 @@ class _ScanScreenState extends State<ScanScreen> {
           .orderBy('date', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          if (snapshot.error.toString().contains("FAILED_PRECONDITION")) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  "Database is preparing your history index. Please wait a few minutes...",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.orange),
-                ),
-              ),
-            );
-          }
-          return Center(child: Text("Error: ${snapshot.error}"));
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+        if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}"));
+        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
 
         final docs = snapshot.data?.docs ?? [];
-
-        if (docs.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Text("No $_activeModel scans found.", style: const TextStyle(color: Colors.grey)),
-            ),
-          );
-        }
+        if (docs.isEmpty) return const Center(child: Text("No scans found.", style: TextStyle(color: Colors.grey)));
 
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: docs.length,
           itemBuilder: (context, index) {
-            final data = docs[index].data() as Map<String, dynamic>;
-            return ListTile(
-              leading: const Icon(Icons.history, color: Colors.blue),
-              title: Text(data['label'] ?? 'Unknown Result'),
-              subtitle: Text("Confidence: ${(data['confidence'] * 100).toStringAsFixed(1)}%"),
+            final doc = docs[index];
+            final data = doc.data() as Map<String, dynamic>;
+            final String label = data['label'] ?? 'Unknown';
+            final bool isHealthy = _isResultHealthy(label);
+            final Color itemColor = isHealthy ? Colors.green : Colors.red;
+
+            return Dismissible(
+              key: Key(doc.id),
+              direction: DismissDirection.endToStart,
+              onDismissed: (direction) => _deleteScan(doc.id),
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 20),
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.delete_sweep, color: Colors.white),
+              ),
+              child: Card(
+                elevation: 0,
+                margin: const EdgeInsets.only(bottom: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: itemColor.withOpacity(0.2)),
+                ),
+                color: itemColor.withOpacity(0.05),
+                child: ListTile(
+                  leading: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                    onPressed: () => _confirmDeletion(context, doc.id),
+                  ),
+                  title: Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: itemColor)),
+                  subtitle: Text("Confidence: ${(data['confidence'] * 100).toStringAsFixed(1)}%"),
+                  trailing: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: itemColor.withOpacity(0.2),
+                    child: Icon(isHealthy ? Icons.check : Icons.priority_high, color: itemColor, size: 14),
+                  ),
+                ),
+              ),
             );
           },
         );
       },
+    );
+  }
+
+  void _confirmDeletion(BuildContext context, String docId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Record?"),
+        content: const Text("This scan will be permanently removed."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(onPressed: () { Navigator.pop(context); _deleteScan(docId); },
+              child: const Text("Delete", style: TextStyle(color: Colors.red))),
+        ],
+      ),
     );
   }
 }

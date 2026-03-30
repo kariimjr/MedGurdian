@@ -8,12 +8,13 @@ class TFLiteService {
   Interpreter? _interpreter;
   String _currentModelType = 'Brain';
 
-  // 1. Load the Model Dynamically from Firebase
+  // Labels matching the index order of your model
+  final List<String> _brainLabels = ['Glioma', 'Meningioma', 'No Tumor', 'Pituitary'];
+  final List<String> _breastLabels = ['Benign', 'Malignant'];
+
   Future<void> loadModel(String modelType) async {
     try {
       _currentModelType = modelType;
-
-      // Use a local variable to prevent race conditions during the download
       String firebaseModelName = modelType == 'Brain' ? 'Brain_Model' : 'Breast_Model';
 
       final customModel = await FirebaseModelDownloader.instance.getModel(
@@ -22,67 +23,86 @@ class TFLiteService {
         FirebaseModelDownloadConditions(iosAllowsCellularAccess: true),
       );
 
-      // ONLY close the old one if the NEW one is ready to be assigned
       final newInterpreter = Interpreter.fromFile(customModel.file);
-
-      _interpreter?.close(); // Safe to close now
+      _interpreter?.close();
       _interpreter = newInterpreter;
 
-      print('$modelType model loaded successfully');
+      print('Model Loaded: $modelType');
     } catch (e) {
-      print('Failed to load $modelType model from Firebase: $e');
-      // If download fails, don't kill the whole app; just keep the old model or null
+      print('Error loading model: $e');
     }
   }
-  // 2. Run Inference
+
   Future<Map<String, dynamic>?> runPrediction(String imagePath) async {
     if (_interpreter == null) return null;
 
-    File file = File(imagePath);
-    Uint8List bytes = await file.readAsBytes();
+    final File file = File(imagePath);
+    final Uint8List bytes = await file.readAsBytes();
     img.Image? originalImage = img.decodeImage(bytes);
     if (originalImage == null) return null;
 
-    // Standardize input size for your CNN models
+    // 1. Resize to match Colab input (224x224)
     img.Image resizedImage = img.copyResize(originalImage, width: 224, height: 224);
-    var inputBuffer = _imageToByteListFloat32(resizedImage, 224, 127.5, 127.5);
 
-    // Output shape: [1, 2] for binary classification (Tumor/Normal or Malignant/Benign)
-    var outputBuffer = List.filled(1 * 2, 0.0).reshape([1, 2]);
+    // 2. Preprocess: Use 0.0 mean and 255.0 std to match "input / 255.0" from Colab
+    var inputBuffer = _imageToByteListFloat32(resizedImage, 224, 0.0, 255.0);
 
+    // 3. Prepare output buffer (4 classes for Brain, 2 for Breast)
+    int numClasses = _currentModelType == 'Brain' ? 4 : 2;
+    var outputBuffer = List<double>.filled(1 * numClasses, 0.0).reshape([1, numClasses]);
+
+    // 4. Run Inference
     _interpreter!.run(inputBuffer, outputBuffer);
 
-    double class0Prob = outputBuffer[0][0];
-    double class1Prob = outputBuffer[0][1];
+    // 5. Process results
+    List<double> probabilities = List<double>.from(outputBuffer[0]);
 
-    // Dynamic Labeling based on active model
-    if (_currentModelType == 'Brain') {
-      return class1Prob > class0Prob
-          ? {'label': 'Tumor Detected', 'confidence': class1Prob}
-          : {'label': 'Normal', 'confidence': class0Prob};
-    } else {
-      return class1Prob > class0Prob
-          ? {'label': 'Malignant', 'confidence': class1Prob}
-          : {'label': 'Benign', 'confidence': class0Prob};
+    // Find the index with the highest probability (Argmax)
+    int maxIndex = 0;
+    double maxProb = -1.0;
+    for (int i = 0; i < probabilities.length; i++) {
+      if (probabilities[i] > maxProb) {
+        maxProb = probabilities[i];
+        maxIndex = i;
+      }
     }
+
+    List<String> labels = _currentModelType == 'Brain' ? _brainLabels : _breastLabels;
+
+    return {
+      'label': labels[maxIndex],
+      'confidence': maxProb,
+      'all_scores': probabilities // Good for debugging
+    };
   }
 
-  ByteBuffer _imageToByteListFloat32(img.Image image, int inputSize, double mean, double std) {
-    var convertedBytes = Float32List(1 * inputSize * inputSize * 3);
-    int pixelIndex = 0;
+  ByteBuffer _imageToByteListFloat32(img.Image image, int size, double d, double k) {
+    var convertedBytes = Float32List(1 * size * size * 3);
+    int bufferIndex = 0;
 
-    for (int i = 0; i < inputSize; i++) {
-      for (int j = 0; j < inputSize; j++) {
-        var pixel = image.getPixel(j, i);
-        // Normalize pixels to [-1, 1] range as required by many CNNs
-        convertedBytes[pixelIndex++] = (pixel.r - mean) / std;
-        convertedBytes[pixelIndex++] = (pixel.g - mean) / std;
-        convertedBytes[pixelIndex++] = (pixel.b - mean) / std;
+    for (int y = 0; y < size; y++) {
+      for (int x = 0; x < size; x++) {
+        var pixel = image.getPixel(x, y);
+
+        // TRY THIS:
+        // If the model was trained with 'preprocess_input',
+        // it usually wants the pixels scaled to [-1, 1]
+        // OR kept at [0, 255].
+
+        // Standard EfficientNetV2 (Most likely):
+        convertedBytes[bufferIndex++] = pixel.r.toDouble();
+        convertedBytes[bufferIndex++] = pixel.g.toDouble();
+        convertedBytes[bufferIndex++] = pixel.b.toDouble();
+
+        /* IF THE ABOVE STILL SAYS "NO TUMOR", replace the 3 lines above with:
+      convertedBytes[bufferIndex++] = (pixel.r / 127.5) - 1.0;
+      convertedBytes[bufferIndex++] = (pixel.g / 127.5) - 1.0;
+      convertedBytes[bufferIndex++] = (pixel.b / 127.5) - 1.0;
+      */
       }
     }
     return convertedBytes.buffer;
   }
-
   void dispose() {
     _interpreter?.close();
   }

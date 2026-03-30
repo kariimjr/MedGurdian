@@ -11,7 +11,6 @@ class MedicalChatScreen extends StatefulWidget {
 }
 
 class _MedicalChatScreenState extends State<MedicalChatScreen> {
-
   final ChatService _chatService = ChatService();
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, String>> _messages = [];
@@ -22,7 +21,7 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
     "Explain Brain MRI results",
     "Symptoms of Breast Cancer",
     "How to prepare for a scan?",
-    "Next steps after diagnosis"
+    "Next steps after diagnosis",
   ];
 
   void _sendPrompt({String? text}) async {
@@ -40,8 +39,8 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
     setState(() {
       _messages.add({
         "role": "ai",
-        "text": response ??
-            "I'm having trouble connecting to the medical server."
+        "text":
+            response ?? "I'm having trouble connecting to the medical server.",
       });
       _isLoading = false;
     });
@@ -64,20 +63,24 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
             ),
           ),
           child: NestedScrollView(
-            headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-              return <Widget>[
-                SliverAppBar(
-                  floating: true,
-                  snap: true,
-                  pinned: false, 
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  centerTitle: true,
-                  foregroundColor: const Color(0xFF0277BD),
-                  title: const Text("AI Helper", style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ];
-            },
+            headerSliverBuilder:
+                (BuildContext context, bool innerBoxIsScrolled) {
+                  return <Widget>[
+                    SliverAppBar(
+                      floating: true,
+                      snap: true,
+                      pinned: false,
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      centerTitle: true,
+                      foregroundColor: const Color(0xFF0277BD),
+                      title: const Text(
+                        "AI Helper",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ];
+                },
             body: Column(
               children: [
                 Expanded(
@@ -93,9 +96,8 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
       ),
     );
   }
+
   Widget _buildWelcomeState() {
-
-
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -127,6 +129,7 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
       ),
     );
   }
+
   Widget _buildChatList() {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
@@ -150,18 +153,18 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4)
-            )
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Text(
           text,
           style: TextStyle(
-              color: isUser ? Colors.white : Colors.black87,
-              fontSize: 15,
-              height: 1.4
+            color: isUser ? Colors.white : Colors.black87,
+            fontSize: 15,
+            height: 1.4,
           ),
         ),
       ),
@@ -188,7 +191,9 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
                       // Constant width for all capsules
                       margin: const EdgeInsets.only(right: 12),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.9),
                         borderRadius: BorderRadius.circular(18),
@@ -198,7 +203,7 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
                             color: Colors.blue.withOpacity(0.05),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
-                          )
+                          ),
                         ],
                       ),
                       child: Center(
@@ -230,10 +235,10 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
               borderRadius: BorderRadius.circular(40),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.blue.withOpacity(0.1),
-                    blurRadius: 25,
-                    offset: const Offset(0, 8)
-                )
+                  color: Colors.blue.withOpacity(0.1),
+                  blurRadius: 25,
+                  offset: const Offset(0, 8),
+                ),
               ],
             ),
             child: Row(
@@ -247,7 +252,9 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
                       hintText: "Start searching...",
                       border: InputBorder.none,
                       hintStyle: TextStyle(
-                          color: Colors.blueGrey, fontSize: 15),
+                        color: Colors.blueGrey,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                 ),
@@ -261,13 +268,18 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
                     ),
                     child: _isLoading
                         ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white)
-                    )
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Icon(
-                        Icons.arrow_upward, color: Colors.white, size: 20),
+                            Icons.arrow_upward,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                   ),
                 ),
               ],
