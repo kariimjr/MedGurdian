@@ -11,10 +11,18 @@ class TFLiteService {
   final List<String> _brainLabels = ['Glioma', 'Meningioma', 'No Tumor', 'Pituitary'];
   final List<String> _breastLabels = ['Benign', 'Malignant'];
 
+  final List<String> _lungLabels = ['Benign', 'Malignant', 'Normal'];
+
   Future<void> loadModel(String modelType) async {
     try {
       _currentModelType = modelType;
-      String firebaseModelName = modelType == 'Brain' ? 'Brain_Model' : 'Breast_Model';
+
+      String firebaseModelName;
+      switch (modelType) {
+        case 'Breast': firebaseModelName = 'Breast_Model'; break;
+        case 'Lung':   firebaseModelName = 'Lung_Model'; break;
+        default:       firebaseModelName = 'Brain_Model';
+      }
 
       final customModel = await FirebaseModelDownloader.instance.getModel(
         firebaseModelName,
@@ -40,16 +48,10 @@ class TFLiteService {
     img.Image? originalImage = img.decodeImage(bytes);
     if (originalImage == null) return null;
 
-    // 1. Resize (Standard 224x224)
     img.Image resizedImage = img.copyResize(originalImage, width: 224, height: 224);
-
-    // 2. Preprocess (Separate logic inside this function)
     var inputBuffer = _imageToByteListFloat32(resizedImage, 224);
 
-    // 3. Prepare Output Buffer & 4. Run Inference
-    // We separate these because the number of output classes is different
     if (_currentModelType == 'Breast') {
-      // VGG16 Binary Classification usually has 1 output unit
       var outputBuffer = List<double>.filled(1, 0.0).reshape([1, 1]);
       _interpreter!.run(inputBuffer, outputBuffer);
 
@@ -61,27 +63,36 @@ class TFLiteService {
         'confidence': isMalignant ? score : (1.0 - score),
         'all_scores': [score]
       };
-    } else {
-      // Brain Multi-class Classification (4 classes)
+    }
+    else if (_currentModelType == 'Lung') {
+      var outputBuffer = List<double>.filled(1 * 3, 0.0).reshape([1, 3]);
+      _interpreter!.run(inputBuffer, outputBuffer);
+      return _processMultiClassResults(outputBuffer[0], _lungLabels);
+    }
+    else {
       var outputBuffer = List<double>.filled(1 * 4, 0.0).reshape([1, 4]);
       _interpreter!.run(inputBuffer, outputBuffer);
-
-      List<double> probabilities = List<double>.from(outputBuffer[0]);
-      int maxIndex = 0;
-      double maxProb = -1.0;
-      for (int i = 0; i < probabilities.length; i++) {
-        if (probabilities[i] > maxProb) {
-          maxProb = probabilities[i];
-          maxIndex = i;
-        }
-      }
-
-      return {
-        'label': _brainLabels[maxIndex],
-        'confidence': maxProb,
-        'all_scores': probabilities
-      };
+      return _processMultiClassResults(outputBuffer[0], _brainLabels);
     }
+  }
+
+  Map<String, dynamic> _processMultiClassResults(List<dynamic> results, List<String> labels) {
+    List<double> probabilities = List<double>.from(results);
+    print("Raw Model Output Scores: $probabilities"); // Helpful for debugging
+    int maxIndex = 0;
+    double maxProb = -1.0;
+
+    for (int i = 0; i < probabilities.length; i++) {
+      if (probabilities[i] > maxProb) {
+        maxProb = probabilities[i];
+        maxIndex = i;
+      }
+    }
+    return {
+      'label': labels[maxIndex],
+      'confidence': maxProb,
+      'all_scores': probabilities
+    };
   }
 
   ByteBuffer _imageToByteListFloat32(img.Image image, int size) {
@@ -97,14 +108,17 @@ class TFLiteService {
         double b = pixel.b.toDouble();
 
         if (_currentModelType == 'Breast') {
-          // --- VGG16 Preprocessing ---
-          // BGR Order and Mean Subtraction
           convertedBytes[bufferIndex++] = b - 103.939;
           convertedBytes[bufferIndex++] = g - 116.779;
           convertedBytes[bufferIndex++] = r - 123.68;
-        } else {
-          // --- Brain Model (EfficientNet) Preprocessing ---
-          // Reverted to your original logic: No division, pure RGB
+        }
+        else if (_currentModelType == 'Lung') {
+
+          convertedBytes[bufferIndex++] = r ;
+          convertedBytes[bufferIndex++] = g ;
+          convertedBytes[bufferIndex++] = b ;
+        }
+        else {
           convertedBytes[bufferIndex++] = r;
           convertedBytes[bufferIndex++] = g;
           convertedBytes[bufferIndex++] = b;

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../services/tflite_service.dart';
 import 'scan_event.dart';
 import 'scan_state.dart';
@@ -17,6 +18,7 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
 
   ScanBloc() : super(ScanInitial()) {
 
+    // Initialize first model
     on<InitializeScanEvent>((event, emit) async {
       emit(ScanLoading());
       try {
@@ -27,67 +29,74 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
       }
     });
 
+    // Switch between Brain, Breast, and Lung
     on<SwitchModelEvent>((event, emit) async {
+      emit(ScanLoading());
       try {
-        // Use event.modelType safely
         _activeModel = event.modelType;
-        emit(ScanLoading());
-
-        // This now fetches from Firebase instead of local assets
         await _tfliteService.loadModel(_activeModel);
-
         emit(ScanInitial());
       } catch (e) {
-        emit(ScanError("Failed to switch model: $e"));
+        emit(ScanError("Failed to switch model to $_activeModel: $e"));
       }
     });
 
+    // Handle Image Picking and Prediction
     on<PickImageEvent>((event, emit) async {
       try {
         final XFile? pickedFile = await _picker.pickImage(source: event.source);
 
         if (pickedFile != null) {
           File imageFile = File(pickedFile.path);
+
+          // Show picked image immediately
           emit(ScanImagePicked(imageFile));
           emit(ScanLoading());
 
+          // 🔥 This calls your TFLiteService which now handles Lung logic
           var result = await _tfliteService.runPrediction(pickedFile.path);
 
           if (result != null) {
             String label = result['label'];
             double confidence = result['confidence'];
 
+            // Save to Firestore with the correct category
             await _saveScanToHistory(label, confidence, _activeModel);
 
-            emit(ScanSuccess(imageFile, label, confidence, _activeModel));
+            emit(ScanSuccess(
+                image: imageFile,
+                resultLabel: label,
+                confidence: confidence,
+                category: _activeModel
+            ));
           } else {
-            emit(ScanError("Could not analyze the image."));
+            emit(ScanError("AI Analysis failed. Please try a different image."));
           }
-        } else {
-          emit(ScanInitial());
         }
       } catch (e) {
-        emit(ScanError("Failed to process image: $e"));
+        emit(ScanError("Processing Error: ${e.toString()}"));
       }
     });
 
     on<ClearHistoryEvent>((event, emit) async {
       try {
         final String? userId = _auth.currentUser?.uid;
-        if (userId != null) {
-          var snapshots = await _firestore
-              .collection('scan_history')
-              .where('userId', isEqualTo: userId)
-              .get();
+        if (userId == null) return;
 
-          final batch = _firestore.batch();
-          for (var doc in snapshots.docs) {
-            batch.delete(doc.reference);
-          }
-          await batch.commit();
+        var snapshots = await _firestore
+            .collection('scan_history')
+            .where('userId', isEqualTo: userId)
+            .where('category', isEqualTo: _activeModel) // 🔥 Only clear current category
+            .get();
+
+        final batch = _firestore.batch();
+        for (var doc in snapshots.docs) {
+          batch.delete(doc.reference);
         }
+        await batch.commit();
+        emit(ScanInitial());
       } catch (e) {
-        emit(ScanError("Failed to clear history: $e"));
+        emit(ScanError("Clear history failed: $e"));
       }
     });
   }

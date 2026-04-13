@@ -15,7 +15,6 @@ class PatientModel {
     required this.phoneNumber,
   });
 
-  // Convert our Object to a Map for Firebase
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
@@ -28,7 +27,6 @@ class PatientModel {
     };
   }
 
-  // Convert Firebase Map back to our Object (useful later)
   factory PatientModel.fromMap(Map<String, dynamic> map) {
     return PatientModel(
       uid: map['uid'] ?? '',

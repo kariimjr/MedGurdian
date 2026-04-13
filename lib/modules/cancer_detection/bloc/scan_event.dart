@@ -2,7 +2,6 @@ import 'package:image_picker/image_picker.dart';
 
 abstract class ScanEvent {}
 
-// 🔥 NEW: Triggers the first model download/load on app startup
 class InitializeScanEvent extends ScanEvent {}
 
 class PickImageEvent extends ScanEvent {
@@ -11,7 +10,7 @@ class PickImageEvent extends ScanEvent {
 }
 
 class SwitchModelEvent extends ScanEvent {
-  final String modelType; // 'Brain' or 'Breast'
+  final String modelType; // 🔥 Supports 'Brain', 'Breast', or 'Lung'
   SwitchModelEvent(this.modelType);
 }
 

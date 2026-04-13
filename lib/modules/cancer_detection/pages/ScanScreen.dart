@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
-// Ensure these paths match your actual project structure
 import '../bloc/scan_bloc.dart';
 import '../bloc/scan_event.dart';
 import '../bloc/scan_state.dart';
@@ -28,24 +27,36 @@ class _ScanScreenState extends State<ScanScreen> {
     });
   }
 
-  // Helper to determine if a result is "Healthy"
-  bool _isResultHealthy(String label) {
-    return label == 'No Tumor' || label == 'Benign';
+  Color _getResultColor(String label) {
+    switch (label) {
+      case 'Normal':
+      case 'No Tumor':
+        return Colors.green;
+      case 'Benign':
+        return Colors.amber.shade700; // Yellow/Amber for intermediate/benign
+      case 'Malignant':
+      case 'Glioma':
+      case 'Pituitary':
+      case 'Meningioma':
+        return Colors.red;
+      default:
+        return Colors.blueGrey;
+    }
   }
 
-  // Firestore Delete Function
+  IconData _getResultIcon(String label) {
+    Color color = _getResultColor(label);
+    if (color == Colors.green) return Icons.check_circle_outline;
+    if (color == Colors.red) return Icons.warning_amber_rounded;
+    return Icons.info_outline; // For Yellow/Benign
+  }
+
   Future<void> _deleteScan(String docId) async {
     try {
-      await FirebaseFirestore.instance.collection('scan_history').doc(docId).delete();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Scan record removed"),
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      await FirebaseFirestore.instance
+          .collection('scan_history')
+          .doc(docId)
+          .delete();
     } catch (e) {
       debugPrint("Error deleting scan: $e");
     }
@@ -56,7 +67,10 @@ class _ScanScreenState extends State<ScanScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("$_activeModel Analysis", style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          "$_activeModel Analysis",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.white,
@@ -66,7 +80,10 @@ class _ScanScreenState extends State<ScanScreen> {
         listener: (context, state) {
           if (state is ScanError) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
             );
           }
         },
@@ -74,45 +91,54 @@ class _ScanScreenState extends State<ScanScreen> {
           return Stack(
             children: [
               SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 10,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    CupertinoSlidingSegmentedControl<String>(
-                      groupValue: _activeModel,
-                      children: const {
-                        'Brain': Text('Brain Cancer'),
-                        'Breast': Text('Breast Cancer'),
-                      },
-                      onValueChanged: (value) {
-                        if (value != null) {
-                          setState(() => _activeModel = value);
-                          context.read<ScanBloc>().add(SwitchModelEvent(value));
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 20),
                     Container(
-                      height: 300,
+                      padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: state is ScanSuccess
-                              ? (_isResultHealthy(state.resultLabel) ? Colors.green : Colors.red)
-                              : Colors.blue.shade100,
-                          width: 2,
-                        ),
+                        color: const Color(0xFFF5F7FA),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: _buildImageArea(state),
+                      child: CupertinoSlidingSegmentedControl<String>(
+                        backgroundColor: Colors.transparent,
+                        thumbColor: Colors.white,
+                        groupValue: _activeModel,
+                        children: const {
+                          'Brain': Text('Brain'),
+                          'Breast': Text('Breast'),
+                          'Lung': Text('Lung'),
+                        },
+                        onValueChanged: (value) {
+                          if (value != null) {
+                            setState(() => _activeModel = value);
+                            context.read<ScanBloc>().add(
+                              SwitchModelEvent(value),
+                            );
+                          }
+                        },
+                      ),
                     ),
+                    const SizedBox(height: 25),
+                    _buildImagePanel(state),
                     const SizedBox(height: 24),
                     _buildResultsArea(state),
                     const SizedBox(height: 24),
                     _buildActionButtons(context),
-                    const SizedBox(height: 32),
-                    const Text("Recent History", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const Divider(),
+                    const SizedBox(height: 40),
+                    const Text(
+                      "Recent History",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF01579B),
+                      ),
+                    ),
+                    const Divider(height: 30),
                     _buildHistoryList(),
                   ],
                 ),
@@ -126,7 +152,13 @@ class _ScanScreenState extends State<ScanScreen> {
                       children: [
                         CircularProgressIndicator(color: Colors.white),
                         SizedBox(height: 16),
-                        Text("Syncing AI...", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        Text(
+                          "Analyzing Scan...",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -138,45 +170,83 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  Widget _buildImageArea(ScanState state) {
-    if (state is ScanImagePicked || state is ScanSuccess) {
-      dynamic currentState = state;
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Image.file(currentState.image, fit: BoxFit.cover),
-      );
-    }
-    return const Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.biotech, size: 80, color: Colors.blue),
-        Text("Upload Scan", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      ],
+  Widget _buildImagePanel(ScanState state) {
+    bool hasImage = state is ScanImagePicked || state is ScanSuccess;
+
+    // UPDATED: Now uses multi-color helper for the border
+    Color borderColor = (state is ScanSuccess)
+        ? _getResultColor(state.resultLabel)
+        : Colors.blue.shade50;
+
+    return Container(
+      height: 300,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FBFF),
+        borderRadius: BorderRadius.circular(25),
+        border: Border.all(color: borderColor, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(23),
+        child: hasImage
+            ? Image.file((state as dynamic).image, fit: BoxFit.cover)
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_a_photo_outlined,
+                    size: 64,
+                    color: Colors.blue.shade200,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    "Upload Medical Scan",
+                    style: TextStyle(
+                      color: Colors.blueGrey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 
   Widget _buildResultsArea(ScanState state) {
     if (state is ScanSuccess) {
-      bool isHealthy = _isResultHealthy(state.resultLabel);
-      Color resultColor = isHealthy ? Colors.green : Colors.red;
+      Color resultColor = _getResultColor(state.resultLabel);
+
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: resultColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: resultColor.withOpacity(0.5), width: 2),
+          color: resultColor.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: resultColor.withOpacity(0.2), width: 1),
         ),
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(isHealthy ? Icons.check_circle : Icons.warning_rounded, color: resultColor),
-                const SizedBox(width: 10),
-                Text(state.resultLabel, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: resultColor)),
-              ],
+            Text(
+              state.resultLabel,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: resultColor,
+              ),
             ),
-            Text("AI Confidence: ${(state.confidence * 100).toStringAsFixed(1)}%"),
+            Text(
+              "AI Confidence: ${(state.confidence * 100).toStringAsFixed(1)}%",
+              style: TextStyle(
+                color: resultColor.withOpacity(0.8),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       );
@@ -188,19 +258,41 @@ class _ScanScreenState extends State<ScanScreen> {
     return Row(
       children: [
         Expanded(
-          child: OutlinedButton.icon(
-            icon: const Icon(Icons.photo_library),
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF1F8E9),
+              foregroundColor: Colors.green.shade700,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+            icon: const Icon(Icons.photo_library_rounded),
             label: const Text("Gallery"),
-            onPressed: () => context.read<ScanBloc>().add(PickImageEvent(ImageSource.gallery)),
+            onPressed: () => context.read<ScanBloc>().add(
+              PickImageEvent(ImageSource.gallery),
+            ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-            icon: const Icon(Icons.camera_alt),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0277BD),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              elevation: 5,
+              shadowColor: Colors.blue.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+            icon: const Icon(Icons.camera_alt_rounded),
             label: const Text("Camera"),
-            onPressed: () => context.read<ScanBloc>().add(PickImageEvent(ImageSource.camera)),
+            onPressed: () => context.read<ScanBloc>().add(
+              PickImageEvent(ImageSource.camera),
+            ),
           ),
         ),
       ],
@@ -209,7 +301,6 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Widget _buildHistoryList() {
     final String? userId = FirebaseAuth.instance.currentUser?.uid;
-
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('scan_history')
@@ -218,11 +309,14 @@ class _ScanScreenState extends State<ScanScreen> {
           .orderBy('date', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}"));
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-
+        if (!snapshot.hasData)
+          return const Center(child: CircularProgressIndicator());
         final docs = snapshot.data?.docs ?? [];
-        if (docs.isEmpty) return const Center(child: Text("No scans found.", style: TextStyle(color: Colors.grey)));
+        if (docs.isEmpty)
+          return const Padding(
+            padding: EdgeInsets.all(20),
+            child: Center(child: Text("No history for this category.")),
+          );
 
         return ListView.builder(
           shrinkWrap: true,
@@ -232,40 +326,40 @@ class _ScanScreenState extends State<ScanScreen> {
             final doc = docs[index];
             final data = doc.data() as Map<String, dynamic>;
             final String label = data['label'] ?? 'Unknown';
-            final bool isHealthy = _isResultHealthy(label);
-            final Color itemColor = isHealthy ? Colors.green : Colors.red;
 
-            return Dismissible(
-              key: Key(doc.id),
-              direction: DismissDirection.endToStart,
-              onDismissed: (direction) => _deleteScan(doc.id),
-              background: Container(
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.only(right: 20),
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.delete_sweep, color: Colors.white),
+            final Color itemColor = _getResultColor(label);
+            final IconData itemIcon = _getResultIcon(label);
+
+            return Card(
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 12),
+              color: const Color(0xFFF5F7FA),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
               ),
-              child: Card(
-                elevation: 0,
-                margin: const EdgeInsets.only(bottom: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: itemColor.withOpacity(0.2)),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
                 ),
-                color: itemColor.withOpacity(0.05),
-                child: ListTile(
-                  leading: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.grey),
-                    onPressed: () => _confirmDeletion(context, doc.id),
+                leading: CircleAvatar(
+                  backgroundColor: itemColor.withOpacity(0.1),
+                  child: Icon(itemIcon, color: itemColor, size: 20),
+                ),
+                title: Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: itemColor,
                   ),
-                  title: Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: itemColor)),
-                  subtitle: Text("Confidence: ${(data['confidence'] * 100).toStringAsFixed(1)}%"),
-                  trailing: CircleAvatar(
-                    radius: 14,
-                    backgroundColor: itemColor.withOpacity(0.2),
-                    child: Icon(isHealthy ? Icons.check : Icons.priority_high, color: itemColor, size: 14),
-                  ),
+                ),
+                subtitle: Text(
+                  "Confidence: ${(data['confidence'] * 100).toStringAsFixed(1)}%",
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                  onPressed: () => _confirmDeletion(context, doc.id),
                 ),
               ),
             );
@@ -280,11 +374,21 @@ class _ScanScreenState extends State<ScanScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Delete Record?"),
-        content: const Text("This scan will be permanently removed."),
+        content: const Text(
+          "Are you sure you want to remove this scan from your history?",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          TextButton(onPressed: () { Navigator.pop(context); _deleteScan(docId); },
-              child: const Text("Delete", style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteScan(docId);
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );

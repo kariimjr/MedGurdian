@@ -4,11 +4,9 @@ import 'package:flutter/material.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  // Function to handle logout
   Future<void> _handleLogout(BuildContext context) async {
     try {
       await FirebaseAuth.instance.signOut();
-      // After logout, navigate back to login and remove all previous screens
       Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -34,7 +32,6 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            // 1. Profile Picture Placeholder
             const CircleAvatar(
               radius: 50,
               backgroundColor: Colors.blue,
@@ -42,7 +39,6 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // 2. User Info
             Text(
               user?.email ?? "User Email",
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
@@ -53,16 +49,13 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // 3. Settings Options
             _buildProfileOption(Icons.history, "Medical History", () {
-              // Navigate to history if needed
             }),
             _buildProfileOption(Icons.security, "Privacy & Security", () {}),
             _buildProfileOption(Icons.help_outline, "Help Support", () {}),
 
             const SizedBox(height: 40),
 
-            // 4. Logout Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -85,7 +78,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // Helper for List Options
   Widget _buildProfileOption(IconData icon, String title, VoidCallback onTap) {
     return Card(
       elevation: 0,
@@ -103,7 +95,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // Confirmation Dialog
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,

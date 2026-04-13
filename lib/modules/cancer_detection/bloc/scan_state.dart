@@ -15,10 +15,14 @@ class ScanSuccess extends ScanState {
   final File image;
   final String resultLabel;
   final double confidence;
-  // 🔥 Add this to track which model gave the result
-  final String category;
+  final String category; // 🔥 Now tracks 'Brain', 'Breast', or 'Lung'
 
-  ScanSuccess(this.image, this.resultLabel, this.confidence, this.category);
+  ScanSuccess({
+    required this.image,
+    required this.resultLabel,
+    required this.confidence,
+    required this.category,
+  });
 }
 
 class ScanError extends ScanState {

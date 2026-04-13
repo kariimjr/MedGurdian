@@ -18,13 +18,11 @@ class AuthRepository {
     required String phone,
   }) async {
     try {
-      // 1. Create User in Firebase Auth
       UserCredential cred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // 2. Create the Patient Model
       PatientModel newPatient = PatientModel(
         uid: cred.user!.uid,
         email: email,
@@ -34,7 +32,6 @@ class AuthRepository {
         phoneNumber: phone,
       );
 
-      // 3. Save Patient Data to Firestore
       await _firestore
           .collection('patients')
           .doc(cred.user!.uid)
@@ -47,7 +44,6 @@ class AuthRepository {
     }
   }
 
-  // Login
   Future<void> login({required String email, required String password}) async {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
