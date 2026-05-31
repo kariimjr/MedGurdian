@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medgurdian/modules/auth/pages/forgotPassword_screen.dart';
 import 'package:medgurdian/modules/auth/pages/login_screen.dart';
 import 'package:medgurdian/modules/auth/pages/register_screen.dart';
 import 'package:medgurdian/modules/cancer_detection/pages/ScanScreen.dart';
@@ -20,6 +21,11 @@ class RouteGen {
         return PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
               const LoginScreen(),
+        );
+      case RouteName.Forget:
+        return PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+          const ForgetPasswordScreen(),
         );
 
       case RouteName.CreateAccount:

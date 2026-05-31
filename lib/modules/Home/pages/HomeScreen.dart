@@ -87,7 +87,7 @@ class _HealthHomeScreenState extends State<HealthHomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const HomeHealthSummary(),
+                  const ChatWithDoctor(),
                   const SizedBox(height: 30),
                   _sectionLabel("Quick Actions"),
                   const HomeQuickActions(),
