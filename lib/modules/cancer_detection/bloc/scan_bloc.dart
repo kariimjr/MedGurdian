@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -41,7 +42,7 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
       }
     });
 
-    // Handle Image Picking and Prediction
+    // Handle Image Picking, Prediction, and Base64 Parsing
     on<PickImageEvent>((event, emit) async {
       try {
         final XFile? pickedFile = await _picker.pickImage(source: event.source);
@@ -49,19 +50,23 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
         if (pickedFile != null) {
           File imageFile = File(pickedFile.path);
 
-          // Show picked image immediately
+          // Show picked image immediately on mobile UI view
           emit(ScanImagePicked(imageFile));
           emit(ScanLoading());
 
-          // 🔥 This calls your TFLiteService which now handles Lung logic
+          // Calls TFLite Engine models
           var result = await _tfliteService.runPrediction(pickedFile.path);
 
           if (result != null) {
             String label = result['label'];
             double confidence = result['confidence'];
 
-            // Save to Firestore with the correct category
-            await _saveScanToHistory(label, confidence, _activeModel);
+            // 🎯 STEP 1: COMPRESS AND TRANSLATE FILE BYTES TO WEB STRING ENCODINGS
+            List<int> imageBytes = await imageFile.readAsBytes();
+            String base64Image = "data:image/jpeg;base64,${base64Encode(imageBytes)}";
+
+            // 🎯 STEP 2: DISPATCH TO BACKEND QUEUES WITH RAW BASE64 PAYLOAD ATTACHED
+            await _saveScanToHistory(label, confidence, _activeModel, base64Image);
 
             emit(ScanSuccess(
                 image: imageFile,
@@ -86,7 +91,7 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
         var snapshots = await _firestore
             .collection('scan_history')
             .where('userId', isEqualTo: userId)
-            .where('category', isEqualTo: _activeModel) // 🔥 Only clear current category
+            .where('category', isEqualTo: _activeModel)
             .get();
 
         final batch = _firestore.batch();
@@ -101,7 +106,8 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
     });
   }
 
-  Future<void> _saveScanToHistory(String label, double confidence, String category) async {
+  // 🎯 STEP 3: WRITES COMPREHENSIVE MEDICAL RECORDS STRUCTURE DIRECTLY ON FIRESTORE
+  Future<void> _saveScanToHistory(String label, double confidence, String category, String base64Url) async {
     final String? userId = _auth.currentUser?.uid;
     if (userId != null) {
       await _firestore.collection('scan_history').add({
@@ -109,7 +115,10 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
         'label': label,
         'confidence': confidence,
         'category': category,
+        'status': 'none',
+        'imageUrl': base64Url, // 🟢 Transmits data smoothly across device ecosystems
         'date': FieldValue.serverTimestamp(),
+        'doctorConfirmation': null,
       });
     }
   }

@@ -20,20 +20,43 @@ class Medicine {
   });
 
   factory Medicine.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>;
-    DateTime lastUpd = (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now();
+    // 1. Safe cast to avoid a null pointer exception if data is malformed
+    final Map<String, dynamic> data = doc.data() as Map<String, dynamic>? ?? {};
 
-    bool isDifferentDay = lastUpd.day != DateTime.now().day ||
-        lastUpd.month != DateTime.now().month ||
-        lastUpd.year != DateTime.now().year;
+    // 2. Safe parsing of the timestamp
+    DateTime lastUpd = DateTime.now();
+    if (data['lastUpdated'] is Timestamp) {
+      lastUpd = (data['lastUpdated'] as Timestamp).toDate();
+    } else if (data['createdAt'] is Timestamp) {
+      // Fallback for fields created on the web panel (e.g., serverTimestamp())
+      lastUpd = (data['createdAt'] as Timestamp).toDate();
+    }
+
+    final DateTime now = DateTime.now();
+    bool isDifferentDay = lastUpd.day != now.day ||
+        lastUpd.month != now.month ||
+        lastUpd.year != now.year;
+
+    // 3. Safe dynamic type casting for numbers (Web numbers vs Mobile integers)
+    int target = 1;
+    if (data['targetDoses'] is num) {
+      target = (data['targetDoses'] as num).toInt();
+    }
+
+    int current = 0;
+    if (data['currentDoses'] is num) {
+      current = (data['currentDoses'] as num).toInt();
+    }
 
     return Medicine(
-      type: data['type'] ?? 'pill',
       id: doc.id,
-      name: data['name'] ?? '',
-      time: data['time'] ?? '',
-      targetDoses: data['targetDoses'] ?? 1,
-      currentDoses: isDifferentDay ? 0 : (data['currentDoses'] ?? 0),
+      // Fallbacks handle case sensitivity issues seamlessly (e.g., 'type' vs 'medicineType')
+      type: data['type']?.toString() ?? 'pill',
+      name: data['name']?.toString() ?? data['medicineName']?.toString() ?? 'Unknown Medication',
+      time: data['time']?.toString() ?? '12:00 PM', // Fallback prevents Firestore sorting omission
+      targetDoses: target,
+      // Reset tracker metrics to 0 safely across date mismatches
+      currentDoses: isDifferentDay ? 0 : current,
       lastUpdated: lastUpd,
     );
   }

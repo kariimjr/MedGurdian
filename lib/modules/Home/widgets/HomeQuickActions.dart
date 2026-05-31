@@ -1,32 +1,95 @@
 import 'package:flutter/material.dart';
+import 'package:medgurdian/modules/MedicineScreen/MedicineReminderScreen.dart';
+import 'package:medgurdian/modules/ReportSummrizer/MedicalSummaryModal.dart';
 
 class HomeQuickActions extends StatelessWidget {
-  const HomeQuickActions({super.key});
+  final VoidCallback?
+  onPdfSummaryPressed; // 🎯 Added dynamic callback trigger hook
+
+  const HomeQuickActions({super.key, this.onPdfSummaryPressed});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _actionCard("Add Med", Icons.add_moderator, Colors.green),
-        const SizedBox(width: 15),
-        _actionCard("Tips", Icons.lightbulb_outline, Colors.orange),
-        const SizedBox(width: 15),
-        _actionCard("Reports", Icons.bar_chart, Colors.purple),
+        _actionCard(
+          title: "Add Med",
+          icon: Icons.add_moderator,
+          color: Colors.green,
+          onTap: () {
+            Navigator.push(
+              context,
+              PageRouteBuilder(pageBuilder: (context, animation, secondaryAnimation) => MedicineReminderScreen(),),
+            );
+          },
+        ),
+        const SizedBox(width: 12),
+        _actionCard(
+          title: "Tips",
+          icon: Icons.lightbulb_outline,
+          color: Colors.orange,
+          onTap: () {
+            debugPrint("Health Tips Tapped");
+          },
+        ),
+        const SizedBox(width: 12),
+
+        _actionCard(
+          title: "Reports",
+          icon: Icons.picture_as_pdf_rounded,
+          color: Colors.purple,
+          onTap:
+              onPdfSummaryPressed ??
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MedicalSummaryModal(category: ''),
+                  ),
+                );
+              },
+        ),
       ],
     );
   }
 
-  Widget _actionCard(String title, IconData icon, Color color) {
+  Widget _actionCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(15)),
-        child: Column(
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 8),
-            Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
-          ],
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: color.withOpacity(0.08),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(15),
+          highlightColor: color.withOpacity(0.05),
+          splashColor: color.withOpacity(0.1),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

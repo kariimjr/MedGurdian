@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeHeader extends StatelessWidget {
   final String greeting;
@@ -12,6 +13,28 @@ class HomeHeader extends StatelessWidget {
     required this.quote,
   });
 
+  Future<void> _makeEmergencyCall() async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: '123',
+    );
+    try {
+      await launchUrl(
+        launchUri,
+        mode: LaunchMode.externalApplication,
+      );
+      debugPrint("Dialer process initialized successfully.");
+    } catch (e) {
+      debugPrint("Could not open dialer protocol forcefully: $e");
+      try {
+        final String telUrl = 'tel:123';
+        await launchUrl(Uri.parse(telUrl), mode: LaunchMode.externalApplication);
+      } catch (nestedErr) {
+        debugPrint("All system launching overrides exhausted: $nestedErr");
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SliverAppBar(
@@ -20,32 +43,89 @@ class HomeHeader extends StatelessWidget {
       elevation: 0,
       scrolledUnderElevation: 0,
       backgroundColor: Colors.blue.shade800,
+      // 🟢 REMOVED global actions bar implementation so button can transition dynamically
 
       flexibleSpace: FlexibleSpaceBar(
-        // 1. Move Name to the very bottom
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 8),
+        // 🎯 Adjusted right padding to guarantee safety layout margins for the inline chip
+        titlePadding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
         centerTitle: false,
-        expandedTitleScale: 1.4,
+        expandedTitleScale: 1.25, // 🎯 Optimizing scale multiplier avoids rendering clipping at peak layout compression
 
-        title: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(
-              "$greeting,",
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.8),
-                fontSize: 16, // Base size (will scale up when expanded)
-                fontWeight: FontWeight.w400,
+            // 👤 LEFT SIDE: User Identity Column Layout
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "$greeting,",
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 13, // Base scalable size metrics layout mapping
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          userName,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 17, // Optimized fallback scale base sizing
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        "👋",
+                        style: TextStyle(fontSize: 15),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            Text(
-              userName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20, // Base size
+
+            // 🚨 RIGHT SIDE: Dynamic SOS Button synced with the title rendering loop
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2.0),
+              child: SizedBox(
+                height: 28, // 🎯 Restrained structural height prevents app bar overflow constraints when collapsed
+                child: ElevatedButton.icon(
+                  onPressed: _makeEmergencyCall,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade600,
+                    foregroundColor: Colors.white,
+                    elevation: 3,
+                    shadowColor: Colors.black45,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    // ⚠️ Scaled size elements adjust text inside the flexible container cleanly
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.gpp_maybe_rounded, color: Colors.white, size: 12),
+                  label: const Text(
+                    "SOS",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10, // 🎯 Balanced font scale moves seamlessly inside the text engine
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
@@ -61,15 +141,12 @@ class HomeHeader extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              // 2. Position the Quote Card ABOVE the name
-              // We use top: 60 to keep it near the top of the blue area
               Positioned(
-                top: 70,
+                top: 65,
                 left: 20,
                 right: 20,
                 child: _buildQuoteCard(),
               ),
-
             ],
           ),
         ),

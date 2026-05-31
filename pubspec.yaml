@@ -46,10 +46,12 @@ dependencies:
   lottie:
   flutter_map:
   latlong2:
-  url_launcher:
+  url_launcher: ^6.3.2
   path_provider:
   geolocator:
   shared_preferences:
+  file_picker: ^8.0.0
+  syncfusion_flutter_pdf: ^33.2.8
 
 
 dev_dependencies:
