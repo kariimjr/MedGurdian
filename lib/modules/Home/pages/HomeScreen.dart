@@ -6,14 +6,12 @@ import 'package:latlong2/latlong.dart';
 import 'package:lottie/lottie.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// Widget Imports
 import 'package:medgurdian/modules/Home/widgets/HomeHeader.dart';
 import 'package:medgurdian/modules/Home/widgets/HomeHealthSummary.dart';
 import 'package:medgurdian/modules/Home/widgets/HomeMapCard.dart';
 import 'package:medgurdian/modules/Home/widgets/HomeQuickActions.dart';
 import 'package:medgurdian/modules/Home/widgets/MedicineListItem.dart';
 
-// Data imports
 import 'package:medgurdian/modules/MedicineScreen/medicine_model.dart';
 import 'package:medgurdian/modules/MedicineScreen/medicine_service.dart';
 
@@ -27,7 +25,6 @@ class HealthHomeScreen extends StatefulWidget {
 class _HealthHomeScreenState extends State<HealthHomeScreen> {
   final MedicineService _medicineService = MedicineService();
 
-  // 🔥 Variables to prevent reloads
   late String _currentQuote;
   late Future<Position> _locationFuture;
 
@@ -42,11 +39,8 @@ class _HealthHomeScreenState extends State<HealthHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // 1. Pick the quote once
     _currentQuote = _quotes[Random().nextInt(_quotes.length)];
 
-    // 2. 🔥 Start the location search ONCE.
-    // This stops the map from reloading every time you take a medicine.
     _locationFuture = _determinePosition();
   }
 
@@ -138,7 +132,6 @@ class _HealthHomeScreenState extends State<HealthHomeScreen> {
     return StreamBuilder<List<Medicine>>(
       stream: _medicineService.getMedicines(),
       builder: (context, snapshot) {
-        // 1. Check if we are still connecting
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: Padding(
@@ -152,7 +145,6 @@ class _HealthHomeScreenState extends State<HealthHomeScreen> {
           return _buildEmptyState();
         }
 
-        // 3. If there is data, show the list
         final meds = snapshot.data!.take(3).toList();
         return Column(
           children: meds.map((med) => MedicineListItem(

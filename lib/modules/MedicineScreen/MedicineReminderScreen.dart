@@ -120,7 +120,7 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
                   trailing: const Icon(Icons.access_time, color: Colors.blue),
                   onTap: () async {
                     final time = await showTimePicker(context: context, initialTime: _selectedTime);
-                    if (time != null) setState(() => _selectedTime = time);
+                    if (time != null) setSheetState(() => _selectedTime = time);
                   },
                 ),
                 const SizedBox(height: 24),
@@ -153,9 +153,9 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F9FF),
       appBar: AppBar(
-        title: Column(
+        title: const Column(
           children: [
-            const Text("Medication Reminder", style: TextStyle(fontWeight: FontWeight.bold)),
+            Text("Medication Reminder", style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         centerTitle: true,
@@ -189,32 +189,71 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
               bool hasStarted = med.currentDoses > 0;
               double progress = med.currentDoses / med.targetDoses;
 
+              bool isFromDoctor = med.dosage != null && med.dosage!.contains("Dr.");
+
               return Card(
                 elevation: 0,
                 margin: const EdgeInsets.symmetric(vertical: 10),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(color: Colors.blue.withOpacity(0.1)),
+                  side: BorderSide(
+                    color: isFromDoctor
+                        ? Colors.indigo.withOpacity(0.3)
+                        : Colors.blue.withOpacity(0.1),
+                    width: isFromDoctor ? 1.5 : 1,
+                  ),
                 ),
+                color: isFromDoctor ? const Color(0xFFF8FAFC) : Colors.white,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
+                      if (isFromDoctor) ...[
+                        Row(
+                          children: [
+                            Icon(Icons.gavel_rounded, size: 12, color: Colors.indigo.shade700),
+                            const SizedBox(width: 4),
+                            Text(
+                              "Official Physician Action Plan",
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.indigo.shade700,
+                                  letterSpacing: 0.5
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                      ],
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
-                          backgroundColor: isFinished ? Colors.green.shade50 : Colors.blue.shade50,
+                          backgroundColor: isFinished
+                              ? Colors.green.shade50
+                              : (isFromDoctor ? Colors.indigo.shade50 : Colors.blue.shade50),
                           child: Icon(
-                              isFinished ? Icons.check_circle : (_medicineIcons[med.type] ?? Icons.medication),
-                              color: isFinished ? Colors.green : Colors.blue
+                              isFinished
+                                  ? Icons.check_circle
+                                  : (isFromDoctor ? Icons.medical_services_rounded : (_medicineIcons[med.type] ?? Icons.medication)),
+                              color: isFinished ? Colors.green : (isFromDoctor ? Colors.indigo.shade700 : Colors.blue)
                           ),
                         ),
-                        title: Text(med.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                  med.name,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)
+                              ),
+                            ),
+                          ],
+                        ),
                         subtitle: Text(
                           isFinished
                               ? "Next dose: Tomorrow"
                               : hasStarted
-                              ? ""
+                              ? "Schedule running active"
                               : "Next dose at ${med.time}",
                           style: TextStyle(
                               color: isFinished ? Colors.orange.shade800 : Colors.grey.shade600,
@@ -224,7 +263,7 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
                         trailing: IconButton(
                           icon: Icon(
                             isFinished ? Icons.verified : Icons.add_circle,
-                            color: isFinished ? Colors.green : Colors.blue,
+                            color: isFinished ? Colors.green : (isFromDoctor ? Colors.indigo.shade700 : Colors.blue),
                             size: 32,
                           ),
                           onPressed: () => _service.takeDose(med.id, med.currentDoses, med.targetDoses),
@@ -236,7 +275,11 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
                           value: progress,
                           minHeight: 10,
                           backgroundColor: Colors.grey.shade100,
-                          valueColor: AlwaysStoppedAnimation<Color>(isFinished ? Colors.green : Colors.blue),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              isFinished
+                                  ? Colors.green
+                                  : (isFromDoctor ? Colors.indigo.shade600 : Colors.blue)
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),

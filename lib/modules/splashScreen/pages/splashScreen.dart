@@ -1,9 +1,7 @@
-
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
-import 'package:medgurdian/core/route/app_routes_name.dart';
 import 'package:medgurdian/core/theme/app_colors.dart';
-
+import 'package:medgurdian/modules/splashScreen/pages/OnboardingScreen.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -21,7 +19,13 @@ class SplashScreen extends StatelessWidget {
               FadeInDown(
                 duration: Duration(seconds: 2),
                 onFinish: (direction) {
-                  Navigator.pushReplacementNamed(context, RouteName.Login);
+                  Navigator.pushReplacement(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          OnboardingScreen(),
+                    ),
+                  );
                 },
                 child: Image.asset(
                   "assets/logo/MedGLogo.png",
@@ -34,7 +38,6 @@ class SplashScreen extends StatelessWidget {
           ),
         ],
       ),
-
     );
   }
 }

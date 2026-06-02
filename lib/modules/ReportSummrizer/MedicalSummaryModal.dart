@@ -73,7 +73,6 @@ class _MedicalSummaryModalState extends State<MedicalSummaryModal> {
     return Scaffold(
       backgroundColor: Colors.white,
 
-      // 🔵 TITLE
       appBar: AppBar(
         title: Text("AI ${widget.category} Summary"),
         centerTitle: true,
@@ -89,7 +88,6 @@ class _MedicalSummaryModalState extends State<MedicalSummaryModal> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
 
-              // 🟡 TEXT BOX CENTER
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -141,7 +139,6 @@ class _MedicalSummaryModalState extends State<MedicalSummaryModal> {
         ),
       ),
 
-      // 🔵 BIG LEFT FLOAT BUTTON (Back)
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
     );
   }
