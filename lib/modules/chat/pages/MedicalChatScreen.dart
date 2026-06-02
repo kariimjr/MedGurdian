@@ -13,7 +13,8 @@ class MedicalChatScreen extends StatefulWidget {
 class _MedicalChatScreenState extends State<MedicalChatScreen> {
   final ChatService _chatService = ChatService();
   final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController(); // 🎯 Scroll controller to auto-align new records
+  final ScrollController _scrollController =
+      ScrollController(); // 🎯 Scroll controller to auto-align new records
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
 
@@ -40,7 +41,8 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
     setState(() {
       _messages.add({
         "role": "ai",
-        "text": response ?? "I'm having trouble connecting to the medical server.",
+        "text":
+            response ?? "I'm having trouble connecting to the medical server.",
       });
       _isLoading = false;
     });
@@ -88,8 +90,11 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
               SliverAppBar(
                 floating: true,
                 snap: true,
-                pinned: true, // 🎯 Changed to true to lock context comfortably during scrolling actions
-                backgroundColor: innerBoxIsScrolled ? Colors.white.withOpacity(0.9) : Colors.transparent,
+                pinned:
+                    true, // 🎯 Changed to true to lock context comfortably during scrolling actions
+                backgroundColor: innerBoxIsScrolled
+                    ? Colors.white.withOpacity(0.9)
+                    : Colors.transparent,
                 elevation: 0,
                 centerTitle: true,
                 foregroundColor: const Color(0xFF0277BD),
@@ -126,11 +131,16 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
               child: Lottie.asset(
                 'assets/json/circles.json',
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => const CircleAvatar(
-                  radius: 60,
-                  backgroundColor: Colors.blueAccent,
-                  child: Icon(Icons.auto_awesome, color: Colors.white, size: 40),
-                ),
+                errorBuilder: (context, error, stackTrace) =>
+                    const CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.blueAccent,
+                      child: Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
               ),
             ),
             const SizedBox(height: 24),
@@ -155,8 +165,12 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
 
   Widget _buildChatList() {
     return ListView.builder(
-      controller: _scrollController, // 🎯 Connect scroll controller tracking here
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), // 🎯 FIXED: Top padding dropped from 100 to 10 to clean whitespace gaps completely
+      controller:
+          _scrollController, // 🎯 Connect scroll controller tracking here
+      padding: const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 10,
+      ), // 🎯 FIXED: Top padding dropped from 100 to 10 to clean whitespace gaps completely
       itemCount: _messages.length,
       itemBuilder: (context, index) {
         final msg = _messages[index];
@@ -288,18 +302,18 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
                     ),
                     child: _isLoading
                         ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Icon(
-                      Icons.arrow_upward,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                            Icons.arrow_upward,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                   ),
                 ),
               ],
