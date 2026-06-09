@@ -12,7 +12,20 @@
           "package_name": "com.example.medgurdian"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "702324035740-9rulq44n6c51g9jj981ibj4j7s1q1b8h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.medgurdian",
+            "certificate_hash": "3806567a0ef4dc20ed3efe4c113fdd34b25217b6"
+          }
+        },
+        {
+          "client_id": "702324035740-p3ib0cqjb6h0r7oofjnarllrkurjqv6t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBJkwE_sRkVIwKOdSMTQSMobzjpjxO7oQ4"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "702324035740-p3ib0cqjb6h0r7oofjnarllrkurjqv6t.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "702324035740-upavsd95kipaccq97gtam07qhcnr3jui.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.medgurdian"
+              }
+            }
+          ]
         }
       }
     }

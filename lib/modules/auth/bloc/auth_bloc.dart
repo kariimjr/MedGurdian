@@ -3,7 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:medgurdian/data/repositories/auth_repository.dart';
 
+// ==========================================
 // --- EVENTS ---
+// ==========================================
 abstract class AuthEvent {}
 
 class RegisterRequested extends AuthEvent {
@@ -30,31 +32,40 @@ class LoginRequested extends AuthEvent {
   LoginRequested(this.email, this.password);
 }
 
-// NEW EVENT: Added for Forget Password
 class ForgotPasswordRequested extends AuthEvent {
   final String email;
   ForgotPasswordRequested(this.email);
 }
 
+class GoogleSignInRequested extends AuthEvent {}
+
+// ==========================================
 // --- STATES ---
+// ==========================================
 abstract class AuthState {}
+
 class AuthInitial extends AuthState {}
+
 class AuthLoading extends AuthState {}
+
 class AuthSuccess extends AuthState {}
-// NEW STATE: Tells UI that the reset code went through successfully
+
 class ForgotPasswordSuccess extends AuthState {}
+
 class AuthFailure extends AuthState {
   final String error;
   AuthFailure(this.error);
 }
 
+// ==========================================
 // --- BLOC ---
+// ==========================================
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository authRepository;
 
   AuthBloc({required this.authRepository}) : super(AuthInitial()) {
 
-    // Handle Register
+    // --- Handle Register ---
     on<RegisterRequested>((event, emit) async {
       emit(AuthLoading());
       try {
@@ -72,14 +83,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
-    // Handle Login (INVERTED GUARD: BLOCKS DOCTORS)
+    // --- Handle Login (Email/Password) ---
     on<LoginRequested>((event, emit) async {
       emit(AuthLoading());
       try {
-        // 1. Log in via Firebase Auth
         await authRepository.login(email: event.email, password: event.password);
 
-        // 2. Check if the user exists in the 'doctors' collection
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
           final doctorDoc = await FirebaseFirestore.instance
@@ -87,24 +96,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
               .doc(user.uid)
               .get();
 
-          // If the document EXISTS in 'doctors', they are a doctor and must be blocked.
           if (doctorDoc.exists) {
-            await FirebaseAuth.instance.signOut();
+            await authRepository.logout(); // Centralized unified logout
             emit(AuthFailure("Access Denied: Doctors must use the Web Portal."));
             return;
           }
         }
 
-        // 3. Success (They are not a doctor, so they can enter)
         emit(AuthSuccess());
       } catch (e) {
-        // Clean up the error message for the UI
         String errorMessage = e.toString().replaceAll(RegExp(r'\[.*?\]'), '').trim();
         emit(AuthFailure(errorMessage));
       }
     });
 
-    // Handle Forgot Password
+    // --- Handle Forgot Password ---
     on<ForgotPasswordRequested>((event, emit) async {
       emit(AuthLoading());
       try {
@@ -112,6 +118,38 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(ForgotPasswordSuccess());
       } catch (e) {
         emit(AuthFailure(e.toString()));
+      }
+    });
+
+    // --- Handle Google Sign-In ---
+    on<GoogleSignInRequested>((event, emit) async {
+      emit(AuthLoading());
+      try {
+        final userCredential = await authRepository.signInWithGoogle();
+
+        if (userCredential == null) {
+          emit(AuthInitial()); // User canceled
+          return;
+        }
+
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final doctorDoc = await FirebaseFirestore.instance
+              .collection('doctors')
+              .doc(user.uid)
+              .get();
+
+          if (doctorDoc.exists) {
+            await authRepository.logout(); // Centralized unified logout
+            emit(AuthFailure("Access Denied: Doctors must use the Web Portal."));
+            return;
+          }
+        }
+
+        emit(AuthSuccess());
+      } catch (e) {
+        String errorMessage = e.toString().replaceAll(RegExp(r'\[.*?\]'), '').trim();
+        emit(AuthFailure(errorMessage));
       }
     });
   }

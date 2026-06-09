@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:medgurdian/modules/auth/bloc/auth_bloc.dart';
-import 'package:lottie/lottie.dart'; // Make sure lottie is in your pubspec.yaml
+import 'package:lottie/lottie.dart';
 import '../../../core/route/app_routes_name.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -19,12 +19,16 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Standard professional background
-      extendBodyBehindAppBar: true, // Seamless design
+      backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthSuccess) {
-            Navigator.pushReplacementNamed(context, RouteName.Layout);
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              RouteName.Layout,
+                  (route) => false,
+            );
           } else if (state is AuthFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.error), backgroundColor: Colors.red),
@@ -38,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
           return CustomScrollView(
             slivers: [
-              // 1. Animated Header Section (Pops like the image)
+              // 1. Animated Header Section
               SliverAppBar(
                 expandedHeight: 280,
                 pinned: true,
@@ -47,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Color(0xFFE1F5FE), // Your light medical blue
+                          Color(0xFFE1F5FE),
                           Colors.white,
                         ],
                         begin: Alignment.topLeft,
@@ -57,10 +61,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: const EdgeInsets.only(top: 20),
                     child: Center(
                       child: Lottie.asset(
-                        'assets/json/Security.json', // Your JSON file
+                        'assets/json/Security.json',
                         fit: BoxFit.contain,
                         height: 300,
-                        // Add an errorBuilder as a placeholder
                         errorBuilder: (context, error, stackTrace) {
                           return const CircleAvatar(
                             radius: 60,
@@ -78,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              // 2. Main Login Panel (Modern, rounded corner style)
+              // 2. Main Login Panel
               SliverToBoxAdapter(
                 child: Container(
                   padding: const EdgeInsets.all(24.0),
@@ -116,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 35),
 
-                        // --- Email Input (Using modern capsule style from image) ---
+                        // --- Email Input ---
                         _buildInputContainer(
                           icon: Icons.mail_outlined,
                           child: TextFormField(
@@ -132,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // --- Password Input (Capsule style) ---
+                        // --- Password Input ---
                         _buildInputContainer(
                           icon: Icons.lock_outline_rounded,
                           child: TextFormField(
@@ -143,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               border: InputBorder.none,
                             ),
                             validator: (value) =>
-                                value!.length > 5 ? null : "Min 6 characters",
+                            value!.length > 5 ? null : "Min 6 characters",
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -169,16 +172,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
 
-                            // 🔥 Modern Primary Action Button
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 40,
                                   vertical: 16,
                                 ),
-                                backgroundColor: const Color(
-                                  0xFF0277BD,
-                                ), // Your main blue
+                                backgroundColor: const Color(0xFF0277BD),
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(15),
@@ -221,18 +221,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 30),
 
-                        // 🔥 Sign In with Google Only
                         Center(
-                          child: GestureDetector(
+                          child: InkWell(
                             onTap: () {
-                              // Trigger Google SignIn event here (future edit)
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Google SignIn - Coming Soon"),
-                                ),
-                              );
+                              context.read<AuthBloc>().add(GoogleSignInRequested());
                             },
-                            child: Container(
+                            borderRadius: BorderRadius.circular(100),
+                            child: Ink(
                               padding: const EdgeInsets.all(2),
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -246,10 +241,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ],
                               ),
-                              child: Lottie.asset(
-                                'assets/json/GoogleLogo.json', // Your JSON file
-                                fit: BoxFit.contain,
+                              child: SizedBox(
                                 height: 70,
+                                width: 70,
+                                child: Lottie.asset(
+                                  'assets/json/GoogleLogo.json',
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                             ),
                           ),
@@ -294,17 +292,16 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Helper widget to build the modern input capsules from the image
   Widget _buildInputContainer({required IconData icon, required Widget child}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FA), // Soft accent background like the image
+        color: const Color(0xFFF5F7FA),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
         children: [
-          Icon(icon, color: Color(0xFF0277BD)),
+          Icon(icon, color: const Color(0xFF0277BD)),
           const SizedBox(width: 12),
           Expanded(child: child),
         ],

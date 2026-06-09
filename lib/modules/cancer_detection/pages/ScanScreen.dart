@@ -67,6 +67,7 @@ class _ScanScreenState extends State<ScanScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+
         title: Text(
           "$_activeModel Analysis",
           style: const TextStyle(fontWeight: FontWeight.bold),
