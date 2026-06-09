@@ -1,18 +1,32 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     try {
       await FirebaseAuth.instance.signOut();
-      if (context.mounted) {
+      if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error logging out: $e")),
         );
@@ -20,7 +34,6 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
-  // 🟢 UPDATED: Intent launcher tailored to bypass rigid emulator matching limits
   Future<void> _sendHelpEmail(BuildContext context) async {
     final Uri emailLaunchUri = Uri(
       scheme: 'mailto',
@@ -34,14 +47,13 @@ class ProfileScreen extends StatelessWidget {
       if (await canLaunchUrl(emailLaunchUri)) {
         await launchUrl(
           emailLaunchUri,
-          mode: LaunchMode.externalNonBrowserApplication, // Forces search outside app container
+          mode: LaunchMode.externalNonBrowserApplication,
         );
       } else {
-        // 🧪 Emulator Fallback: Attempts a raw direct bypass if OS parameters drop verification
         await launchUrl(emailLaunchUri);
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("Could not launch mail application client: $e"),
@@ -52,11 +64,118 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _updatePassword(String newPassword) async {
+    try {
+      await FirebaseAuth.instance.currentUser?.updatePassword(newPassword);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Password updated successfully!")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().contains('requires-recent-login')
+                ? "Please log out and log back in to change your password."
+                : "Error updating password: $e"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showPrivacySecurityOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Privacy & Security Settings",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.lock_reset, color: Colors.blue),
+              title: const Text("Update Password"),
+              onTap: () {
+                Navigator.pop(context);
+                _showUpdatePasswordDialog();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showUpdatePasswordDialog() {
+    _passwordController.clear();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Update Password"),
+        content: TextField(
+          controller: _passwordController,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: "New Password", hintText: "Minimum 6 characters"),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () {
+              if (_passwordController.text.trim().length >= 6) {
+                _updatePassword(_passwordController.text.trim());
+                Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Password must be at least 6 characters long.")),
+                );
+              }
+            },
+            child: const Text("Update"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🟢 NEW: Extremely simple "About App" dialog using Flutter's built-in widget
+  void _showAboutAppDialog() {
+    showAboutDialog(
+      context: context,
+      applicationName: 'MedGuardian',
+      applicationVersion: 'Version 1.0.0',
+      applicationIcon: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.health_and_safety, size: 40, color: Colors.blue),
+      ),
+      children: [
+        const SizedBox(height: 16),
+        const Text(
+          "MedGuardian is dedicated to helping patients securely manage their profile and interface with medical services.\n\nBuilt with Flutter and Firebase.",
+          style: TextStyle(fontSize: 14),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
-    // 🟢 Dynamic user display name string mapping block
     String displayName = "User Account";
     if (user?.displayName != null && user!.displayName!.isNotEmpty) {
       displayName = user.displayName!;
@@ -86,7 +205,6 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Displays the parsed Full Name or Sanitized Email username placeholder
             Text(
               displayName,
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
@@ -98,21 +216,59 @@ class ProfileScreen extends StatelessWidget {
             ),
             const Text(
               "Patient Account",
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const SizedBox(height: 32),
 
-            _buildProfileOption(Icons.history, "Medical History", () {}),
-            _buildProfileOption(Icons.security, "Privacy & Security", () {}),
+            // 🟢 UPDATED: Replaced Medical History with the super easy "About App" dialog
+            _buildProfileOption(
+                Icons.info_outline,
+                "About App",
+                _showAboutAppDialog
+            ),
 
-            // Triggers the updated email launcher block
+            _buildProfileOption(
+              Icons.security,
+              "Privacy & Security",
+              _showPrivacySecurityOptions,
+            ),
+
             _buildProfileOption(
               Icons.help_outline,
               "Help Support",
                   () => _sendHelpEmail(context),
             ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
+
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber.shade200),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.gavel_rounded, color: Colors.amber.shade800, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "Medical Disclaimer: MedGuardian provides information for educational purposes only. This app does not provide medical advice, diagnosis, or treatment, and does not replace professional consultation with a qualified doctor.",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.amber.shade900,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
 
             SizedBox(
               width: double.infinity,
