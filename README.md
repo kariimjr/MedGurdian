@@ -4,7 +4,7 @@
 
 Introduction
 
-An integrated deep learning-based healthcare platform for automated multi-class cancer detection (Brain, Breast, and Lung) using medical imaging (MRI, Mammography, and CT scans), paired with a Flutter mobile application and a React doctor portal.
+- An integrated deep learning-based healthcare platform for automated multi-class cancer detection (Brain, Breast, and Lung) using medical imaging (MRI, Mammography, and CT scans), paired with a Flutter mobile application and a React doctor portal.
 
 ✨ Features
 
@@ -60,15 +60,15 @@ Built using Flutter and the BLoC pattern for reactive state management. Supports
 
 📊 Datasets
 
-Brain MRI Dataset: Masoud Nickparvar (Kaggle, 7,200 images) & Roboflow (brain-tumor-aeizh, 3,063 images).
-Breast Mammogram Dataset: Hayder17 (Kaggle, 3,383 images) & Roboflow (breastcancer-yolov8, 1,642 images).
-Lung CT Dataset: Roboflow Universe (lung-cancer-mz4fj, 1,053 CT scan images).
+- Brain MRI Dataset: Masoud Nickparvar (Kaggle, 7,200 images) & Roboflow (brain-tumor-aeizh, 3,063 images).
+- Breast Mammogram Dataset: Hayder17 (Kaggle, 3,383 images) & Roboflow (breastcancer-yolov8, 1,642 images).
+- Lung CT Dataset: Roboflow Universe (lung-cancer-mz4fj, 1,053 CT scan images).
 
 📷 Screenshots
+
 <img width="293" height="593" alt="image" src="https://github.com/user-attachments/assets/f8580142-d774-4715-9b78-242dad2599d7" />
 <img width="294" height="595" alt="image" src="https://github.com/user-attachments/assets/374a6dee-4d42-47d1-bc64-52786ec4a834" />
 <img width="284" height="609" alt="image" src="https://github.com/user-attachments/assets/21de4cea-fb02-4a08-8ced-70dc0c438076" />
-<img width="277" height="595" alt="image" src="https://github.com/user-attachments/assets/52782a9f-754f-41ba-b081-b1c1622c2605" />
 <img width="1598" height="900" alt="image" src="https://github.com/user-attachments/assets/7ac9677a-b3e2-4747-8a18-40f354bd53b6" />
 
 🔮 Future Work
@@ -79,6 +79,7 @@ Lung CT Dataset: Roboflow Universe (lung-cancer-mz4fj, 1,053 CT scan images).
 - Large-scale clinical validation trials and hospital system integrations.
 
 👥 Authors
+
 1) Ahmed Samir - Computer Engineering, The British University in Egypt
 2) Karim Mohamed - Computer Engineering, The British University in Egypt
 3) Mohamed Ali - Computer Engineering, The British University in Egypt
