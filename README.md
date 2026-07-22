@@ -1,16 +1,24 @@
-# medgurdian
+MedGuardian 🩺📱
+An intelligent, AI-powered healthcare assistant mobile application built with Flutter, Firebase, and a robust deep learning pipeline for automated medical image analysis and health tracking.
 
-Medical Application
+🌟 Key Features
+AI-Powered Diagnostics: Integrates a deep learning classification model to assist in analyzing medical images with high accuracy.
 
-## Getting Started
+Secure Authentication: Seamless user onboarding and authentication powered by Firebase.
 
-This project is a starting point for a Flutter application.
+Smart Local Notifications: Automated background scheduling and repeating push notifications to ensure users never miss medication or health checkpoints.
 
-A few resources to get you started if this is your first Flutter project:
+Modern State Management: Built using the BLoC pattern for predictable state flow and high-performance UI rendering.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Cross-Platform Compatibility: Optimized for smooth execution across Android and iOS devices.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+🛠️ Tech Stack
+Frontend: Flutter, Dart
+
+State Management: BLoC (Business Logic Component)
+
+Backend & Auth: Firebase (Authentication, Firestore, Cloud Messaging)
+
+Machine Learning: TensorFlow / PyTorch / Python inference pipelines
+
+Local Services: Flutter Local Notifications Plugin
