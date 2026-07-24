@@ -7,7 +7,7 @@ class ChatService {
   ChatService() {
     _model = GenerativeModel(
       model: 'gemini-2.5-flash-lite',
-      apiKey: 'AIzaSyBbLEFj-wXyN3gIyO-8WWKNTAk17RQ4-a8',
+      apiKey: '**',
       systemInstruction: Content.system(
         "You are MedGuardian AI, a compassionate and highly professional clinical assistant integrated within the MedGuardian platform. "
         "Your core mission is to help patients understand complex medical terminology, imaging concepts, and tumor classification results (specifically regarding Brain, Breast, and Lung scans).\n\n"
