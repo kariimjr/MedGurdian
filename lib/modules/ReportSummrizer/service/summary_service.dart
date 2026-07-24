@@ -5,8 +5,7 @@ class SummaryService {
   static const String _apiUrl =
       "https://api.groq.com/openai/v1/chat/completions";
 
-  static const String _apiKey =
-      "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";
+  static const "**";
 
   Future<String?> generateReportSummary(String rawMedicalReport) async {
     try {
